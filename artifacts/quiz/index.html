@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AssisTT Quiz Time</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap');
+
+:root {
+  --tt-blue: #002C5F;
+  --tt-cyan: #00B5E2;
+  --tt-cyan-dark: #008AA8;
+  --tt-bg: #001736;
+  --panel-bg: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.15);
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --warning: #f1c40f;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--tt-bg);color:#fff;min-height:100vh;overflow-x:hidden}
+.screen{display:none;min-height:100vh}.screen.active{display:flex;flex-direction:column}
+
+#screen-landing, #screen-admin-login, #screen-host, #screen-join, #screen-waiting, #screen-lb, #screen-end {
+  background: linear-gradient(135deg, var(--tt-bg), var(--tt-blue));
+  align-items:center; justify-content:center; text-align:center; padding:2rem;
+}
+.brand-logo { height: 80px; margin-bottom: 1rem; filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.3)); }
+.logo{font-size:3rem;font-weight:900;letter-spacing:-1px}.logo span{color:var(--tt-cyan)}
+
+.btn{padding:1rem 2.5rem;border-radius:12px;border:none;cursor:pointer;font-size:1.1rem;font-weight:700;transition:all .2s ease; font-family: inherit;}
+.btn:hover{transform:translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.2);}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--tt-cyan);color:#fff;}
+.btn-primary:hover{background:var(--tt-cyan-dark);}
+.btn-outline{background:transparent;color:#fff;border:2px solid var(--border-light)}
+.btn-outline:hover{background:rgba(255,255,255,0.1);}
+.btn-success{background:var(--success);color:#fff}.btn-danger{background:var(--danger);color:#fff}.btn-sm{padding:.6rem 1.4rem;font-size:.9rem}
+.btn-group{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
+
+.card-panel {background:var(--panel-bg);border:1px solid var(--border-light);border-radius:24px;padding:2.5rem;width:100%;max-width:400px;display:flex;flex-direction:column;gap:1.2rem;text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); backdrop-filter: blur(10px);}
+.fi, .biginp, .ninp {width:100%;padding:1rem 1.2rem;background:rgba(255,255,255,.1);border:1px solid var(--border-light);border-radius:12px;color:#fff;font-size:1rem;outline:none;text-align:center; font-family: inherit; transition: all 0.2s;}
+.fi:focus, .biginp:focus, .ninp:focus {border-color:var(--tt-cyan); background:rgba(255,255,255,.15);}
+.biginp {font-size:2rem;font-weight:800;letter-spacing:10px;}
+
+#screen-admin{background:var(--tt-bg);flex-direction:column}
+.ahdr{background:var(--tt-blue);padding:1rem 2rem;display:flex;align-items:center;gap:1rem;border-bottom:1px solid var(--border-light);flex-wrap:wrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index:10;}
+.ahdr h2{flex:1;font-size:1.2rem}
+.abody{display:flex;flex:1;gap:0;flex-wrap:wrap}
+.sidebar{width:280px;background:var(--tt-blue);border-right:1px solid var(--border-light);padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+.sidebar h3{font-size:.85rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.6)}
+.qlist{list-style:none;display:flex;flex-direction:column;gap:.5rem;max-height:360px;overflow-y:auto}
+.qi{padding:.8rem 1rem;background:rgba(255,255,255,.05);border-radius:10px;cursor:pointer;font-size:.9rem;border:1px solid transparent;transition:all .15s;display:flex;align-items:center;gap:.75rem}
+.qi:hover{background:rgba(255,255,255,.1)}.qi.active{border-color:var(--tt-cyan);background:rgba(0,181,226,.15)}
+.qnum{width:24px;height:24px;background:var(--tt-cyan);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0}
+.qtx{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editor{flex:1;padding:2.5rem;overflow-y:auto; background: var(--tt-bg);}
+.fg{margin-bottom:1.2rem}.fg label{display:block;font-size:.85rem;color:rgba(255,255,255,.7);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:1px; font-weight:600;}
+.fg input,.fg select,.fg textarea{width:100%;padding:1rem;background:rgba(255,255,255,.05);border:1px solid var(--border-light);border-radius:12px;color:#fff;font-size:.95rem;outline:none;transition:border .2s; font-family:inherit;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--tt-cyan)}.fg select option{background:var(--tt-blue)}
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.abox{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:12px;border:2px solid var(--border-light);transition:all .15s; background: rgba(255,255,255,0.02);}
+.abox.correct{border-color:var(--success);background:rgba(46,204,113,.1)}
+.abox input[type=text]{background:transparent;border:none;flex:1;color:#fff;font-size:.95rem;padding:0;outline:none}
+.adot{width:16px;height:16px;border-radius:50%;flex-shrink:0}
+.da{background:#e74c3c}.db{background:#3498db}.dc{background:#f1c40f}.dd{background:#2ecc71}
+.ct{width:24px;height:24px;border:2px solid rgba(255,255,255,.4);border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:all .15s}
+.abox.correct .ct{background:var(--success);border-color:var(--success)}
+
+.gpin{font-size:5rem;font-weight:900;letter-spacing:8px;color:var(--tt-cyan);line-height:1; text-shadow: 0 4px 15px rgba(0,0,0,0.3);}
+.plbl{font-size:1.1rem;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:3px; font-weight: 600;}
+.qrbox{background:#fff;padding:15px;border-radius:16px;display:inline-block; box-shadow: 0 10px 25px rgba(0,0,0,0.2);}
+.pbox{background:var(--panel-bg);border-radius:20px;padding:2rem;min-width:350px; border: 1px solid var(--border-light);}
+.pchips{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center;min-height:50px}
+.pchip{padding:.4rem 1.2rem;border-radius:50px;font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2); box-shadow: 0 4px 10px rgba(0,0,0,0.1);}
+
+#screen-avatar{background:linear-gradient(135deg,var(--tt-bg),var(--tt-blue));flex-direction:column;align-items:center;padding:2rem;gap:1rem;overflow-y:auto}
+.av-preview-wrap{display:flex;flex-direction:column;align-items:center;gap:1rem}
+.av-circle{width:160px;height:160px;border-radius:50%;overflow:hidden;border:4px solid var(--tt-cyan);flex-shrink:0; background:rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,181,226,0.3);}
+.av-tabs{display:flex;gap:.5rem;background:rgba(255,255,255,.1);border-radius:12px;padding:6px;flex-wrap:wrap;justify-content:center;max-width:500px}
+.av-tab{padding:.6rem 1.2rem;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.6);transition:all .2s;}
+.av-tab.active{background:var(--tt-cyan);color:#fff; box-shadow: 0 4px 10px rgba(0,0,0,0.2);}
+.av-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem; width:100%; max-width:500px;}
+.av-itm{aspect-ratio:1;border-radius:16px;background:rgba(255,255,255,.05);border:3px solid transparent;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;overflow:hidden; padding: 10px;}
+.av-itm:hover{background:rgba(255,255,255,.1); transform: translateY(-3px);}.av-itm.sel{border-color:var(--tt-cyan);background:rgba(0,181,226,.15); transform: scale(1.05);}
+
+.wav{width:140px;height:140px;border-radius:50%;overflow:hidden;margin:0 auto;border:4px solid var(--tt-cyan); box-shadow: 0 10px 30px rgba(0,181,226,0.4);}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1); box-shadow: 0 0 20px rgba(0,181,226,0.2);}50%{transform:scale(1.05); box-shadow: 0 0 40px rgba(0,181,226,0.6);}}
+
+#screen-qhost, #screen-qplayer {background:var(--tt-bg);flex-direction:column}
+.qhdr, .pqhdr{background:var(--tt-blue);padding:1.5rem 2rem;display:flex;align-items:center;gap:1.5rem; border-bottom: 1px solid var(--border-light); box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
+.qprog{flex:1;height:10px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden}
+.qbar{height:100%;background:linear-gradient(90deg,var(--tt-cyan),#00e5ff);transition:width .1s linear;border-radius:5px; box-shadow: 0 0 10px var(--tt-cyan);}
+.tcircle{width:70px;height:70px;border-radius:50%;background:var(--tt-cyan);color:#fff;font-size:1.8rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .3s; box-shadow: 0 5px 15px rgba(0,0,0,0.2);}
+.tcircle.urgent{background:var(--danger);animation:urgP .5s infinite; box-shadow: 0 0 20px var(--danger);}
+
+.qtxtbox, .pqtxt{background:var(--panel-bg);border-radius:24px;padding:3rem 2rem;font-size:1.8rem;font-weight:800;text-align:center;flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-light); box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 1rem;}
+.pqtxt {font-size: 1.4rem; padding: 2rem;}
+
+.ag4, .paans{display:grid;grid-template-columns:1fr 1fr;gap:1rem; padding: 0 1rem 1rem 1rem;}
+.abtn, .pabtn{padding:1.5rem;border-radius:16px;border:none;cursor:pointer;font-size:1.1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:1rem;position:relative;overflow:hidden;transition:all .2s; box-shadow: 0 6px 15px rgba(0,0,0,0.15);}
+.pabtn{justify-content:center; flex-direction: column; gap: 0.5rem; font-size: 1.2rem;}
+.pabtn span {font-size: 2rem;}
+
+.abtn.revealed.correct{animation:cflash .5s ease;box-shadow:0 0 40px rgba(46,204,113,.5); border: 3px solid #fff;}
+.abtn.revealed.wrong{opacity:.3; filter: grayscale(100%);}
+.ashape{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem; background:rgba(0,0,0,0.2); border-radius: 50%;}
+.aa{background:#e74c3c}.ab{background:#3498db}.ac{background:#f1c40f; color:#333;}.ad{background:#2ecc71}
+.hbar{position:absolute;bottom:0;left:0;height:8px;background:rgba(255,255,255,.5);border-radius:0 4px 4px 0;transition:width .6s}
+.spill{background:rgba(255,255,255,.1);border-radius:50px;padding:.5rem 1.5rem;font-size:1rem; font-weight:600; border:1px solid rgba(255,255,255,.2)}
+.qftr{background:var(--tt-blue);padding:1.5rem 2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem; border-top: 1px solid var(--border-light);}
+
+.lbtitle{font-size:2.5rem;font-weight:900;text-align:center;z-index:1; color: var(--tt-cyan); text-shadow: 0 4px 10px rgba(0,0,0,0.3);}
+.lbwrap{width:100%;max-width:600px;position:relative;z-index:1}
+.lbrow{display:flex;align-items:center;gap:1.5rem;border-radius:16px;padding:1rem 1.5rem;margin-bottom:.8rem; box-shadow: 0 6px 15px rgba(0,0,0,0.15);}
+.lb1{background:linear-gradient(90deg, rgba(241,196,15,0.3), rgba(241,196,15,0.1)); border:1px solid rgba(241,196,15,0.5)}
+.lb2{background:linear-gradient(90deg, rgba(189,195,199,0.3), rgba(189,195,199,0.1)); border:1px solid rgba(189,195,199,0.5)}
+.lb3{background:linear-gradient(90deg, rgba(211,84,0,0.3), rgba(211,84,0,0.1)); border:1px solid rgba(211,84,0,0.5)}
+.lbx{background:var(--panel-bg); border: 1px solid var(--border-light);}
+.lbrank{width:50px;font-weight:900;text-align:center}
+.lbname{flex:1;font-weight:700; font-size: 1.2rem;}
+.lbscore{font-weight:900;font-size:1.4rem;color:var(--tt-cyan)}
+
+#confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:800;display:none}
+
+.toast-c{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--tt-cyan);color:#fff;padding:1rem 2rem;border-radius:50px;font-weight:700;z-index:9999; box-shadow: 0 10px 20px rgba(0,0,0,0.3); animation:sdown .3s ease}
+.music-btn{position:fixed;bottom:1.5rem;right:1.5rem;width:56px;height:56px;border-radius:50%;background:var(--tt-cyan);border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:9000;transition:all .2s; box-shadow: 0 6px 15px rgba(0,0,0,0.3);}
+.music-btn:hover{transform: scale(1.1); background: var(--tt-cyan-dark);}
+@keyframes sdown{from{opacity:0;transform:translate(-50%, 20px)}to{opacity:1;transform:translate(-50%, 0)}}
+@keyframes urgP{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes cflash{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+  .screen { padding: 1rem !important; }
+  .logo { font-size: 2rem; }
+  .brand-logo { height: 50px; }
+  .btn { padding: 0.8rem 1.5rem; font-size: 1rem; }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+  .btn-group { gap: 0.5rem; }
+  .card-panel { max-width: 100%; padding: 1.5rem; }
+  .fi, .biginp, .ninp { padding: 0.8rem; font-size: 1rem; }
+  .biginp { font-size: 1.8rem; letter-spacing: 6px; }
+  .sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid var(--border-light); padding: 1rem; }
+  .abody { flex-direction: column; }
+  .editor { padding: 1rem; }
+  .qlist { max-height: 200px; }
+  .ag { grid-template-columns: 1fr; gap: 0.5rem; }
+  .gpin { font-size: 3rem; letter-spacing: 4px; }
+  .qrbox { padding: 10px; }
+  .pbox { min-width: auto; width: 100%; max-width: 400px; }
+  .pchips { gap: 0.5rem; }
+  .pchip { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+  #screen-avatar { padding: 1rem; }
+  .av-circle { width: 120px; height: 120px; border-width: 3px; }
+  .av-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; max-width: 100%; }
+  .av-tabs { gap: 0.3rem; }
+  .av-tab { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+  .qhdr, .pqhdr { padding: 1rem; flex-wrap: wrap; gap: 1rem; }
+  .tcircle { width: 50px; height: 50px; font-size: 1.4rem; }
+  .qtxtbox, .pqtxt { padding: 1.5rem 1rem; font-size: 1.3rem; margin: 0.5rem; }
+  .pqtxt { font-size: 1.1rem; padding: 1.5rem 1rem; }
+  .ag4, .paans { grid-template-columns: 1fr; gap: 0.5rem; padding: 0 0.5rem 0.5rem 0.5rem; }
+  .abtn, .pabtn { padding: 1rem; font-size: 0.95rem; }
+  .pabtn { font-size: 1rem; }
+  .pabtn span { font-size: 1.5rem; }
+  .ashape { width: 32px; height: 32px; font-size: 1.2rem; }
+  .lbtitle { font-size: 1.8rem; }
+  .lbwrap { max-width: 100%; }
+  .lbrow { gap: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+  .lbrank { font-size: 1rem; width: 40px; }
+  .lbname { font-size: 1rem; }
+  .lbscore { font-size: 1.2rem; }
+  .wav { width: 100px; height: 100px; border-width: 3px; }
+  .fg label { font-size: 0.75rem; }
+  .fg input, .fg select, .fg textarea { font-size: 0.9rem; padding: 0.75rem; }
+  .toast-c { padding: 0.8rem 1.5rem; font-size: 0.9rem; bottom: 1rem; }
+  .music-btn { width: 48px; height: 48px; font-size: 1.2rem; bottom: 1rem; right: 1rem; }
+  #join-pin { font-size: 1.8rem; letter-spacing: 6px; }
+}
+
+@media (max-width: 480px) {
+  .logo { font-size: 1.5rem; }
+  .btn { padding: 0.6rem 1.2rem; font-size: 0.9rem; }
+  .gpin { font-size: 2.2rem; letter-spacing: 2px; }
+  .av-grid { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+  .qtxtbox, .pqtxt { font-size: 1.1rem; padding: 1rem; margin: 0.3rem; }
+  .ag4, .paans { gap: 0.3rem; padding: 0.3rem; }
+  .pabtn { padding: 0.8rem 0.5rem; font-size: 0.9rem; }
+  .pabtn span { font-size: 1.3rem; }
+  .qhdr, .pqhdr { padding: 0.75rem; }
+  .tcircle { width: 45px; height: 45px; font-size: 1.2rem; }
+  .sidebar { max-height: 150px; }
+  .qlist { max-height: 150px; }
+  .music-btn { width: 44px; height: 44px; font-size: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="screen-landing" class="screen active">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" class="brand-logo" style="height: 60px;">
+  <div class="logo">AssisTT <span>Quiz Time</span></div>
+  <div style="color:rgba(255,255,255,.7);font-size:1.2rem; margin-top: -1rem; font-weight: 600;">Kurumsal Etkileşim Platformu</div>
+  <div class="btn-group" style="margin-top: 1rem;">
+    <button class="btn btn-primary" onclick="showAdminLogin()">⚙️ Yönetici Paneli</button>
+    <button class="btn btn-outline" onclick="show('join')">🎮 Oyuna Katıl</button>
+  </div>
+</div>
+
+<div id="screen-admin-login" class="screen">
+  <div class="card-panel">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height: 40px; margin: 0 auto;">
+    <h2 style="font-size:1.5rem; color: var(--tt-cyan);">Sistem Girişi</h2>
+    <input class="fi" type="password" id="admin-pw" placeholder="Erişim Şifresi..." onkeydown="if(event.key==='Enter')adminLogin()">
+    <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">Oturum Aç →</button>
+    <div class="err" id="admin-err" style="display:none; color: var(--danger);">Yetkisiz Erişim! Şifre Hatalı.</div>
+    <button class="btn btn-outline btn-sm" onclick="show('landing')">← Ana Ekran</button>
+  </div>
+</div>
+
+<div id="screen-admin" class="screen">
+  <div class="ahdr">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height: 30px; margin-right: 15px;">
+    <span class="logo" style="font-size:1.3rem; flex:1;">Quiz<span> Time</span></span>
+    <button class="btn btn-sm btn-outline" onclick="show('landing')" style="margin-right: 10px;">Çıkış</button>
+    <button class="btn btn-sm btn-success" onclick="startLobby()">▶ Lobiyi Başlat</button>
+  </div>
+  <div class="abody">
+    <div class="sidebar">
+      <h3>Soru Havuzu</h3>
+      <ul class="qlist" id="q-list"></ul>
+      <button class="btn btn-outline btn-sm" style="width:100%;margin-top:.5rem" onclick="addQ()">+ Yeni Soru</button>
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-top:.5rem" onclick="document.getElementById('excel-upload').click();">📊 Excel Yükle</button>
+      <input type="file" id="excel-upload" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(event)">
+      <div style="height: 1px; background: var(--border-light); margin: 1rem 0;"></div>
+      <h3>Sistem Ayarları</h3>
+      <div class="fg"><label>Oturum Adı</label><input type="text" id="quiz-title" value="AssisTT Eğitim Quiz"></div>
+      <div class="fg"><label>Erişim Şifresi</label><input type="password" id="admin-pw-c" placeholder="Yeni şifre belirle..."></div>
+      <button class="btn btn-sm btn-outline" style="width:100%" onclick="changePw()">Şifreyi Güncelle</button>
+    </div>
+    <div class="editor" id="editor"></div>
+  </div>
+</div>
+
+<div id="screen-host" class="screen">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height: 50px; margin-bottom: 1rem;">
+  <div class="plbl">KATILIM KODU</div>
+  <div class="gpin" id="game-pin">000000</div>
+  <div class="qrbox" id="qr-container"></div>
+  <div class="pbox">
+    <h3 style="color: var(--tt-cyan); margin-bottom: 1rem;">Hazır Katılımcılar (<span id="player-count">0</span>)</h3>
+    <div class="pchips" id="player-chips"><div style="color: rgba(255,255,255,0.4);">Bağlantılar bekleniyor...</div></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-success" onclick="startGame()" style="font-size: 1.2rem; padding: 1.2rem 3rem;">🚀 OYUNU BAŞLAT</button>
+    <button class="btn btn-outline" onclick="showAdmin()">İptal Et</button>
+  </div>
+</div>
+
+<div id="screen-join" class="screen">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height: 50px; margin-bottom: 1rem;">
+  <div class="card-panel">
+    <h2 style="color: var(--tt-cyan);">Oyuna Bağlan</h2>
+    <div>
+      <label style="font-size:.85rem;color:rgba(255,255,255,.7);display:block;margin-bottom:.5rem; font-weight: 600;">OTURUM KODU</label>
+      <input class="biginp" type="text" id="join-pin" maxlength="6" placeholder="_ _ _ _ _ _" oninput="this.value=this.value.replace(/\D/g,'')">
+    </div>
+    <div>
+      <label style="font-size:.85rem;color:rgba(255,255,255,.7);display:block;margin-bottom:.5rem; font-weight: 600;">ADINIZ SOYADINIZ</label>
+      <input class="ninp" type="text" id="join-name" maxlength="16" placeholder="Örn: Ahmet Yılmaz">
+    </div>
+    <button class="btn btn-primary" onclick="joinGame()" style="width:100%; font-size: 1.2rem;">Giriş Yap →</button>
+    <div class="err" id="join-err" style="display:none; color: var(--danger); font-weight: 600;"></div>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="show('landing')">← Vazgeç</button>
+</div>
+
+<div id="screen-avatar" class="screen">
+  <div style="font-size:1.8rem;font-weight:900; color: var(--tt-cyan);">Profilini Seç</div>
+  <div class="av-top">
+    <div class="av-preview-wrap">
+      <div class="av-circle" id="av-circle">
+        <svg id="av-svg" viewBox="0 0 100 100" width="160" height="160"></svg>
+      </div>
+    </div>
+  </div>
+  <div class="av-tabs" id="av-tabs" style="margin-top: 1rem;">
+    <button class="av-tab active" onclick="avTabType('adventurer', this)">Karakter</button>
+    <button class="av-tab" onclick="avTabType('adventurer-neutral', this)">Portre</button>
+    <button class="av-tab" onclick="avTabType('bottts', this)">Robot</button>
+    <button class="av-tab" onclick="avTabType('fun-emoji', this)">Emoji</button>
+  </div>
+  <div style="width: 100%; max-width: 500px; text-align: right; margin-bottom: 0.5rem; margin-top: 1rem;">
+      <button class="btn btn-sm btn-outline" onclick="genAvGrid()">🔄 Karakterleri Yenile</button>
+  </div>
+  <div class="av-grid" id="grid-avatar-options"></div>
+  <button class="btn btn-primary" onclick="confirmAvatar()" style="padding:1.2rem 4rem;margin-top:1.5rem; font-size: 1.2rem;">Sahneye Çık! ✓</button>
+</div>
+
+<div id="screen-waiting" class="screen">
+  <div class="wav pulse" id="w-avatar"><svg id="w-av-svg" viewBox="0 0 100 100" width="140" height="140"></svg></div>
+  <div style="font-size:2rem;font-weight:900; color: var(--tt-cyan);" id="w-name"></div>
+  <div style="color:rgba(255,255,255,.7); font-size: 1.2rem;">Oturum Yöneticisinin başlatması bekleniyor...</div>
+  <div style="background:var(--panel-bg);border: 1px solid var(--border-light); border-radius:16px;padding:1.5rem 3rem;text-align:center; margin-top: 1rem;">
+    <div style="font-size:.9rem;color:rgba(255,255,255,.6);margin-bottom:.5rem; font-weight: 600;">BAĞLANTI KODU</div>
+    <div style="font-size:2.5rem;font-weight:900;letter-spacing:6px;color:#fff;" id="w-pin"></div>
+  </div>
+</div>
+
+<div id="screen-qhost" class="screen">
+  <div class="qhdr">
+    <div style="flex:1">
+      <div style="font-size:.9rem;color:rgba(255,255,255,.7);margin-bottom:8px; font-weight: 700;">SORU <span id="qnum">1</span> / <span id="qtotal">1</span></div>
+      <div class="qprog"><div class="qbar" id="qbar" style="width:100%"></div></div>
+    </div>
+    <div class="tcircle" id="timer-h">20</div>
+  </div>
+  <div class="qbody" style="flex:1; display:flex; flex-direction:column; padding: 2rem;">
+    <div id="all-banner" style="display:none; background:rgba(46,204,113,.2); color:var(--success); padding: 1rem; border-radius: 12px; text-align: center; font-weight: bold; border: 1px solid var(--success); margin-bottom: 1rem;">✅ Tüm katılımcılar yanıtladı!</div>
+    <div class="qtxtbox" id="qtxt">Soru</div>
+    <div class="ag4" id="qans-host"></div>
+    <div style="display:flex; gap:1rem; justify-content:center; margin-top: 1.5rem;">
+      <div class="spill">👥 <span id="ans-cnt">0</span> / <span id="tot-pl">0</span> Katılımcı</div>
+      <div class="spill" id="pts-lbl" style="border-color: var(--tt-cyan); color: var(--tt-cyan);"></div>
+    </div>
+  </div>
+  <div class="qftr">
+    <button class="btn btn-sm btn-outline" onclick="showAdmin()">Durdur</button>
+    <button class="btn btn-primary" id="reveal-btn" onclick="revealAnswer()" style="padding: 1rem 3rem;">Yanıtı Göster</button>
+    <button class="btn btn-success" id="next-btn" onclick="goNextOrLB()" style="display:none; padding: 1rem 3rem;">Sıradaki →</button>
+  </div>
+</div>
+
+<div id="screen-qplayer" class="screen">
+  <div class="pqhdr">
+    <div style="flex:1">
+      <div style="font-size:.9rem;color:rgba(255,255,255,.7);margin-bottom:8px; font-weight: 700;">SORU <span id="pqnum">1</span></div>
+      <div class="qprog"><div class="qbar" id="pqbar" style="width:100%"></div></div>
+    </div>
+    <div class="tcircle" id="timer-p">20</div>
+  </div>
+  <div style="flex:1; display:flex; flex-direction:column; padding:1.5rem; gap:1.5rem;">
+    <div class="pqtxt" id="pqtxt">Soru</div>
+    <div class="paans" id="paans" style="flex:1;"></div>
+    <div id="pfeedback" style="text-align:center; min-height: 80px;"></div>
+  </div>
+</div>
+
+<div id="screen-lb" class="screen">
+  <div class="lbtitle">🏆 Liderlik Tablosu</div>
+  <div class="lbwrap" id="lb-list"></div>
+  <div id="lb-actions" style="display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;z-index:1; margin-top: 1rem;"></div>
+</div>
+
+<div id="screen-end" class="screen">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height: 60px; margin-bottom: 1rem; z-index:1;">
+  <div style="font-size:2rem;font-weight:900;z-index:1; color: #fff;">Oturum Tamamlandı!</div>
+  <div class="lbwrap" id="end-lb" style="z-index:1;width:100%;max-width:500px; margin-top: 2rem;"></div>
+  <div class="btn-group" style="z-index:1; margin-top: 2rem;">
+    <button class="btn btn-outline" onclick="show('landing')">🏠 Ana Ekrana Dön</button>
+  </div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+<button class="music-btn" id="music-btn" onclick="toggleMusic()">🎵</button>
+
+<script>
+// ═══════════════════════════════ SOCKET.IO BAĞLANTISI ═══════════════════════════════
+const socket = io({ path: '/api/socket.io', reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
+
+socket.on('connect', () => { console.log('Socket bağlandı:', socket.id); });
+socket.on('disconnect', () => { console.log('Socket bağlantısı kesildi'); });
+socket.on('connect_error', (err) => { console.error('Bağlantı hatası:', err.message); });
+
+// ═══════════════════════════════ AUDIO ENGINE ═══════════════════════════════
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+let musicGain, sfxGain, bgMusic = null, musicOn = true;
+
+function initAudio() {
+  musicGain = AC.createGain(); musicGain.gain.value = 0.25; musicGain.connect(AC.destination);
+  sfxGain = AC.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(AC.destination);
+}
+
+function playTone(freq, type, dur, vol=0.4, dest=sfxGain, delay=0) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(dest);
+  o.type = type; o.frequency.setValueAtTime(freq, AC.currentTime + delay);
+  g.gain.setValueAtTime(0, AC.currentTime + delay);
+  g.gain.linearRampToValueAtTime(vol, AC.currentTime + delay + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + delay + dur);
+  o.start(AC.currentTime + delay); o.stop(AC.currentTime + delay + dur + 0.05);
+}
+
+function sfxSelect() { playTone(659,'triangle',.1,.3,sfxGain,0); }
+function sfxCorrect() { playTone(523,'sine',.12,.4,sfxGain,0); playTone(659,'sine',.12,.4,sfxGain,.1); playTone(1047,'sine',.25,.45,sfxGain,.32); }
+function sfxWrong() { playTone(220,'sawtooth',.15,.35,sfxGain,0); playTone(174,'sawtooth',.25,.3,sfxGain,.15); }
+function sfxCountdown() { playTone(880,'sine',.07,.3); }
+function sfxReveal() { [0,1,2,3].forEach(i => playTone(400 + i*120,'square',.08,.3,sfxGain,i*.06)); }
+function sfxFanfare() { [523,659,784,1047,1319].forEach((n,i) => playTone(n,'triangle',.2,.45,sfxGain,i*.12)); }
+
+function startBgMusic(style='lobby') {
+  stopBgMusic();
+  if (!musicOn) return;
+  const bpm = style === 'question' ? 140 : 100;
+  const beat = 60 / bpm;
+  let playing = true;
+  const targetVolume = style === 'question' ? 0.03 : 0.25;
+  musicGain.gain.setValueAtTime(targetVolume, AC.currentTime);
+  const chord_lobby = [[261,329,392],[293,369,440],[349,440,523],[329,415,493]];
+  const chord_q     = [[392,494,587],[349,440,523],[440,554,659],[493,622,740]];
+  const chords = style === 'question' ? chord_q : chord_lobby;
+  let step = 0;
+  function tick() {
+    if (!playing || !musicOn) return;
+    const ch = chords[step % chords.length];
+    ch.forEach((f,i) => playTone(f,'triangle', beat*1.8, 0.06, musicGain, i*0.01));
+    playTone(ch[0]/2,'sine', beat*.9, 0.09, musicGain, 0);
+    step++;
+    bgMusic = setTimeout(tick, beat * 1000);
+  }
+  tick();
+  return () => { playing = false; }
+}
+
+function stopBgMusic() { if (bgMusic) { clearTimeout(bgMusic); bgMusic = null; } }
+function toggleMusic() {
+  musicOn = !musicOn;
+  document.getElementById('music-btn').style.background = musicOn ? 'var(--tt-cyan)' : '#e74c3c';
+  if (!musicOn) stopBgMusic(); else startBgMusic(currentMusicStyle);
+}
+
+let currentMusicStyle = 'lobby';
+function setBgMusic(style) { currentMusicStyle = style; startBgMusic(style); }
+document.addEventListener('click', () => { if (AC.state === 'suspended') AC.resume(); }, { once: true });
+initAudio();
+
+// ═══════════════════════════════ AVATAR ALTYAPISI ════════════
+const AA = window.AVATAR_ASSETS || {
+  buildAvatarSVG(av) {
+    const style = av.style || 'adventurer'; const seed = av.seed || 'AssisTT';
+    const url = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc&radius=50`;
+    return `<image href="${url}" width="100" height="100" />`;
+  },
+  buildMiniSVG(av, size=40) {
+    const style = av.style || 'adventurer'; const seed = av.seed || 'AssisTT';
+    const url = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc&radius=50`;
+    return `<img src="${url}" width="${size}" height="${size}" style="border-radius:50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2);">`;
+  }
+};
+
+let myAvatar = { style: 'adventurer', seed: 'AssisTT' };
+let currentAvStyle = 'adventurer';
+
+function initAvatarBuilder() { genAvGrid(); }
+
+function avTabType(style, el) {
+  document.querySelectorAll('.av-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentAvStyle = style;
+  genAvGrid();
+}
+
+function genAvGrid() {
+  const grid = document.getElementById('grid-avatar-options');
+  const seeds = Array.from({length: 8}, () => Math.random().toString(36).substring(2, 8));
+  grid.innerHTML = seeds.map(seed => {
+    const av = { style: currentAvStyle, seed: seed };
+    const svgStr = AA.buildAvatarSVG(av);
+    return `<div class="av-itm" onclick="selAvPart('${currentAvStyle}', '${seed}', this)">
+              <svg viewBox="0 0 100 100" width="100%" height="100%">${svgStr}</svg>
+            </div>`;
+  }).join('');
+  selAvPart(currentAvStyle, seeds[0], grid.firstElementChild);
+}
+
+function selAvPart(style, seed, el) {
+  myAvatar = { style, seed };
+  document.querySelectorAll('#grid-avatar-options .av-itm').forEach(e => e.classList.remove('sel'));
+  if(el) el.classList.add('sel');
+  document.getElementById('av-svg').innerHTML = AA.buildAvatarSVG(myAvatar);
+}
+
+// ═══════════════════════════════ GAME STATE ═══════════════════════════════
+let questions = JSON.parse(localStorage.getItem('ql_q') || '[]');
+let ADMIN_PW = localStorage.getItem('ql_pw') || 'admin123';
+let selQIdx=-1, gamePin='', players=[], isHost=false, myName='', myPin='';
+let timerInt=null, timerLeft=20, revealed=false, curQIdx=0;
+let confAnim=null, curQuestion=null, totalQuestions=0;
+let myScore=0;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + id);
+  if (el) el.classList.add('active');
+}
+function toast(m) { const t=document.createElement('div');t.className='toast-c';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800); }
+function saveQ() { localStorage.setItem('ql_q', JSON.stringify(questions)); }
+function clearInts() { clearInterval(timerInt); timerInt=null; }
+
+function showAdminLogin() { show('admin-login'); setTimeout(()=>document.getElementById('admin-pw').focus(),100); }
+function adminLogin() {
+  if (document.getElementById('admin-pw').value === ADMIN_PW) { document.getElementById('admin-pw').value=''; showAdmin(); }
+  else { const e=document.getElementById('admin-err');e.style.display='block';setTimeout(()=>e.style.display='none',2500); }
+}
+function changePw() { const np=document.getElementById('admin-pw-c').value.trim();if(!np){toast('Şifre boş olamaz!');return}ADMIN_PW=np;localStorage.setItem('ql_pw',np);document.getElementById('admin-pw-c').value='';toast('Şifre Güncellendi ✓'); }
+function showAdmin() { clearInts();stopConfetti();stopBgMusic();isHost=false;show('admin');renderQL();if(questions.length>0&&selQIdx<0){selQIdx=0;renderE(0)}else if(selQIdx>=0)renderE(selQIdx); }
+
+function renderQL() {
+  const ul=document.getElementById('q-list');
+  if(!questions.length){ul.innerHTML='<div style="text-align:center; color:rgba(255,255,255,0.4); padding: 1rem;">Soru bulunamadı</div>';return}
+  ul.innerHTML=questions.map((q,i)=>`<li class="qi ${i===selQIdx?'active':''}" onclick="selQ(${i})"><div class="qnum">${i+1}</div><div class="qtx">${q.text||'(Boş)'}</div><span onclick="delQ(event,${i})" style="color:var(--danger);cursor:pointer;padding:5px; font-weight:bold;">✕</span></li>`).join('');
+}
+function selQ(i){selQIdx=i;renderQL();renderE(i);}
+function renderE(i){
+  const q=questions[i];
+  document.getElementById('editor').innerHTML=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem"><span style="font-size:1.2rem;font-weight:800; color:var(--tt-cyan);">Soru Düzenleyici (Soru ${i+1})</span><button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:#fff;border:none;margin-left:auto" onclick="moveQ(${i},-1)">Yukarı Taşı ↑</button><button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:#fff;border:none" onclick="moveQ(${i},1)">Aşağı Taşı ↓</button></div>
+  <div class="fg"><label>Soru Metni</label><textarea rows="3" id="e-text" placeholder="Soruyu yazın...">${q.text||''}</textarea></div>
+  <div class="ag" style="margin-bottom:1.5rem"><div class="fg" style="margin:0"><label>Süre (Saniye)</label><input type="number" id="e-time" value="${q.time||20}" min="5" max="120"></div><div class="fg" style="margin:0"><label>Puan Çarpanı</label><select id="e-pts"><option value="standard" ${q.pts==='standard'?'selected':''}>Standart (1x)</option><option value="double" ${q.pts==='double'?'selected':''}>Çift Puan (2x)</option><option value="none" ${q.pts==='none'?'selected':''}>Puansız</option></select></div></div>
+  <label style="font-size:.85rem;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:1rem; font-weight:600;">Yanıt Seçenekleri (Doğru olanı işaretleyin)</label>
+  <div class="ag" id="e-ans">${q.answers.map((a,j)=>`<div class="abox ${a.correct?'correct':''}" id="ebox-${j}"><div class="adot d${['a','b','c','d'][j]}"></div><input type="text" placeholder="${['A','B','C','D'][j]} Şıkkı" value="${a.text||''}" id="eans-${j}"><div class="ct" onclick="togC(${j})">${a.correct?'✓':''}</div></div>`).join('')}</div>
+  <div style="display:flex;gap:1rem;margin-top:2rem"><button class="btn btn-primary" onclick="saveQ2(${i})">💾 Değişiklikleri Kaydet</button><button class="btn btn-outline" onclick="delQ(null,${i})">Sil</button></div>`;
+}
+function togC(j){const b=document.getElementById('ebox-'+j);const t=b.querySelector('.ct');b.classList.toggle('correct');t.textContent=b.classList.contains('correct')?'✓':'';}
+function saveQ2(i){const text=document.getElementById('e-text').value.trim();const time=parseInt(document.getElementById('e-time').value)||20;const pts=document.getElementById('e-pts').value;const answers=[0,1,2,3].map(j=>({text:document.getElementById('eans-'+j).value.trim(),correct:document.getElementById('ebox-'+j).classList.contains('correct')}));if(!text){toast('Soru metni boş bırakılamaz!');return}if(!answers.some(a=>a.correct)){toast('En az bir doğru cevap işaretlemelisiniz!');return}questions[i]={text,time,pts,answers};saveQ();renderQL();toast('Soru başarıyla kaydedildi ✓');}
+function addQ(){questions.push({text:'',time:20,pts:'standard',answers:[{text:'',correct:false},{text:'',correct:false},{text:'',correct:false},{text:'',correct:false}]});saveQ();selQIdx=questions.length-1;renderQL();renderE(selQIdx);}
+function delQ(e,i){if(e)e.stopPropagation();if(!confirm('Bu soruyu silmek istediğinize emin misiniz?'))return;questions.splice(i,1);saveQ();selQIdx=Math.max(-1,Math.min(selQIdx,questions.length-1));renderQL();if(selQIdx>=0)renderE(selQIdx);else document.getElementById('editor').innerHTML='<div style="text-align:center; color:rgba(255,255,255,0.4); margin-top:5rem; font-size:1.2rem;">Lütfen sol taraftan bir soru seçin veya yeni ekleyin.</div>';}
+function moveQ(i,d){const j=i+d;if(j<0||j>=questions.length)return;[questions[i],questions[j]]=[questions[j],questions[i]];saveQ();selQIdx=j;renderQL();renderE(j);}
+
+// ═══════════════════════════════ HOST: LOBİ BAŞLAT ═══════════════════════════════
+function startLobby() {
+  if (!questions.length) { toast('Sistemi başlatmak için en az 1 soru eklemelisiniz!'); return; }
+  isHost = true;
+  players = [];
+  curQIdx = 0;
+  gamePin = String(Math.floor(100000 + Math.random() * 900000));
+
+  socket.emit('create-session', { pin: gamePin, questions: questions });
+
+  show('host');
+  document.getElementById('game-pin').textContent = gamePin;
+  document.getElementById('player-count').textContent = '0';
+  document.getElementById('player-chips').innerHTML = '<div style="color: rgba(255,255,255,0.4);">Bağlantılar bekleniyor...</div>';
+  document.getElementById('qr-container').innerHTML = '';
+
+  const currentHost = window.location.hostname;
+  const currentPort = window.location.port ? ':' + window.location.port : '';
+  const joinUrl = `${window.location.protocol}//${currentHost}${currentPort}${window.location.pathname}?join=${gamePin}`;
+
+  try {
+    new QRCode(document.getElementById('qr-container'), {
+      text: joinUrl, width: 160, height: 160,
+      colorDark: '#002C5F', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) { console.error('QR kod hatası:', e); }
+
+  setBgMusic('lobby');
+}
+
+socket.on('session-created', (data) => {
+  console.log('Oturum oluşturuldu:', data.pin);
+});
+
+socket.on('player-joined', (data) => {
+  players = data.players || [];
+  document.getElementById('player-count').textContent = data.playerCount;
+  updatePlayerChips();
+});
+
+socket.on('player-left', (data) => {
+  players = data.players || [];
+  document.getElementById('player-count').textContent = data.playerCount;
+  updatePlayerChips();
+});
+
+function updatePlayerChips() {
+  const chips = document.getElementById('player-chips');
+  if (!players.length) {
+    chips.innerHTML = '<div style="color: rgba(255,255,255,0.4);">Bağlantılar bekleniyor...</div>';
+    return;
+  }
+  chips.innerHTML = players.map(p => {
+    const avSvg = AA.buildMiniSVG(p.avatar || myAvatar, 36);
+    return `<div class="pchip">${avSvg}${p.name}</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════ HOST: OYUNU BAŞLAT ═══════════════════════════════
+function startGame() {
+  socket.emit('start-game', { pin: gamePin });
+}
+
+socket.on('game-started', (data) => {
+  curQIdx = data.qIdx;
+  totalQuestions = data.total;
+  curQuestion = data.question;
+  if (isHost) {
+    showHostQuestion(curQIdx);
+  } else {
+    showPlayerQuestion(curQIdx, curQuestion);
+  }
+});
+
+socket.on('question-shown', (data) => {
+  curQIdx = data.qIdx;
+  totalQuestions = data.total;
+  curQuestion = data.question;
+  if (isHost) {
+    showHostQuestion(curQIdx);
+  } else {
+    showPlayerQuestion(curQIdx, curQuestion);
+  }
+});
+
+// ═══════════════════════════════ HOST: SORU EKRANI ═══════════════════════════════
+function showHostQuestion(qi) {
+  stopConfetti();
+  const q = questions[qi];
+  timerLeft = q.time || 20;
+  revealed = false;
+
+  show('qhost');
+  setBgMusic('question');
+
+  document.getElementById('qnum').textContent = qi + 1;
+  document.getElementById('qtotal').textContent = totalQuestions || questions.length;
+  document.getElementById('qtxt').textContent = q.text;
+  document.getElementById('qbar').style.width = '100%';
+  document.getElementById('timer-h').textContent = timerLeft;
+  document.getElementById('timer-h').classList.remove('urgent');
+  document.getElementById('reveal-btn').style.display = '';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('all-banner').style.display = 'none';
+  document.getElementById('pts-lbl').textContent = q.pts === 'double' ? '⚡ Çift Puan' : q.pts === 'none' ? '🎯 Puansız' : '⭐ Standart Puan';
+
+  const shapes = ['▲', '●', '■', '♦'];
+  const cls = ['aa', 'ab', 'ac', 'ad'];
+  document.getElementById('qans-host').innerHTML = q.answers.map((a, i) =>
+    `<div class="abtn ${cls[i]}" id="ha-${i}"><div class="ashape">${shapes[i]}</div><span style="flex:1; text-align:left;">${a.text}</span><div class="hbar" id="hbar-${i}" style="width:0%"></div></div>`
+  ).join('');
+
+  document.getElementById('ans-cnt').textContent = '0';
+  document.getElementById('tot-pl').textContent = players.length;
+
+  clearInts();
+  timerInt = setInterval(() => {
+    timerLeft--;
+    const te = document.getElementById('timer-h');
+    if (te) { te.textContent = timerLeft; if (timerLeft <= 5) te.classList.add('urgent'); else te.classList.remove('urgent'); }
+    if (timerLeft <= 5 && timerLeft > 0) sfxCountdown();
+    const qb = document.getElementById('qbar');
+    if (qb) qb.style.width = Math.max(0, timerLeft / q.time * 100) + '%';
+    if (timerLeft <= 0) { clearInterval(timerInt); revealAnswer(); }
+  }, 1000);
+}
+
+socket.on('player-answered', (data) => {
+  document.getElementById('ans-cnt').textContent = data.answeredCount;
+  document.getElementById('tot-pl').textContent = data.totalPlayers;
+  const total = data.totalPlayers;
+  const counts = data.answerCounts || {};
+  for (let j = 0; j < 4; j++) {
+    const cnt = counts[j] || 0;
+    const bar = document.getElementById('hbar-' + j);
+    if (bar) bar.style.width = total ? (cnt / total * 80 + 5) + '%' : '0%';
+  }
+});
+
+socket.on('all-answered', () => {
+  document.getElementById('all-banner').style.display = 'block';
+  setTimeout(() => revealAnswer(), 1500);
+});
+
+// ═══════════════════════════════ HOST: YANITLARI GÖSTER ═══════════════════════════════
+function revealAnswer() {
+  clearInts();
+  if (revealed) return;
+  revealed = true;
+  sfxReveal();
+  stopBgMusic();
+  socket.emit('reveal-answer', { pin: gamePin, qIdx: curQIdx });
+}
+
+socket.on('answer-revealed', (data) => {
+  const correctIndexes = data.correctIndexes || [];
+  const q = questions[data.qIdx];
+
+  if (isHost && q) {
+    q.answers.forEach((a, i) => {
+      const el = document.getElementById('ha-' + i);
+      if (el) el.classList.add('revealed', correctIndexes.includes(i) ? 'correct' : 'wrong');
+    });
+    document.getElementById('reveal-btn').style.display = 'none';
+    document.getElementById('next-btn').style.display = 'block';
+    document.getElementById('next-btn').textContent = curQIdx + 1 < questions.length ? 'Sonraki Soru →' : '🏆 Liderlik Tablosu';
+    document.getElementById('all-banner').style.display = 'none';
+  }
+
+  if (!isHost) {
+    showPlayerReveal(data.qIdx, correctIndexes, data.playerScores);
+  }
+});
+
+// ═══════════════════════════════ HOST: SIRAYI İLERLET ═══════════════════════════════
+function goNextOrLB() {
+  if (curQIdx + 1 >= questions.length) {
+    socket.emit('show-leaderboard', { pin: gamePin });
+  } else {
+    socket.emit('show-leaderboard', { pin: gamePin });
+  }
+}
+
+socket.on('leaderboard-shown', (data) => {
+  stopBgMusic();
+  renderLBFromArray(data.leaderboard, isHost, data.isLast);
+});
+
+function renderLBFromArray(leaderboard, hostView, isLast) {
+  show('lb');
+  const rankCls = ['lb1', 'lb2', 'lb3'];
+  document.getElementById('lb-list').innerHTML = (leaderboard || []).slice(0, 5).map((p, i) => {
+    const av = p.avatar || myAvatar;
+    return `<div class="lbrow ${rankCls[i] || 'lbx'}">
+      <div class="lbrank" style="font-size:${i < 3 ? '1.8rem' : '1.2rem'}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
+      <div style="width:50px; height:50px; flex-shrink:0;">${AA.buildMiniSVG(av, 50)}</div>
+      <div class="lbname">${p.name}</div>
+      <div class="lbscore">${p.score} <span style="font-size:0.9rem; color:#fff; font-weight:normal;">Puan</span></div>
+    </div>`;
+  }).join('') || '<div style="text-align:center; color:rgba(255,255,255,0.4);">Veri bulunamadı</div>';
+
+  const acts = document.getElementById('lb-actions');
+  if (hostView) {
+    if (isLast) {
+      acts.innerHTML = `<button class="btn btn-primary" onclick="endGameNow()" style="padding:1rem 3rem;">🏁 Oyunu Bitir</button>`;
+    } else {
+      acts.innerHTML = `<button class="btn btn-primary" onclick="continueGame()" style="padding:1rem 3rem;">Devam Et →</button><button class="btn btn-outline" onclick="endGameNow()">Sonlandır</button>`;
+    }
+  } else {
+    acts.innerHTML = '<div style="color:var(--tt-cyan);font-weight:600;font-size:1.1rem;z-index:1">Oturum yöneticisinin devam etmesi bekleniyor...</div>';
+  }
+
+  sfxFanfare();
+  setTimeout(() => startHostConfetti(), 300);
+  setBgMusic('lobby');
+}
+
+function continueGame() {
+  socket.emit('next-question', { pin: gamePin });
+}
+
+function endGameNow() {
+  socket.emit('end-game', { pin: gamePin });
+}
+
+socket.on('game-ended', (data) => {
+  showEnd(data.leaderboard);
+});
+
+function showEnd(leaderboard) {
+  stopBgMusic();
+  show('end');
+  const rankCls = ['lb1', 'lb2', 'lb3'];
+  document.getElementById('end-lb').innerHTML = (leaderboard || []).slice(0, 3).map((p, i) => {
+    const av = p.avatar || myAvatar;
+    return `<div class="lbrow ${rankCls[i] || 'lbx'}">
+      <div class="lbrank" style="font-size:${i === 0 ? '2rem' : '1.4rem'}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
+      <div style="width:60px; height:60px;">${AA.buildMiniSVG(av, 60)}</div>
+      <div class="lbname" style="font-size:1.4rem;">${p.name}</div>
+      <div class="lbscore" style="font-size:1.6rem;">${p.score}</div>
+    </div>`;
+  }).join('');
+  sfxFanfare();
+  setTimeout(() => startHostConfetti(), 300);
+}
+
+// ═══════════════════════════════ PLAYER: OYUNA KATIL ═══════════════════════════════
+function joinGame() {
+  const pin = document.getElementById('join-pin').value.trim();
+  const name = document.getElementById('join-name').value.trim();
+  const err = document.getElementById('join-err');
+  err.style.display = 'none';
+
+  if (pin.length !== 6) { err.textContent = 'Lütfen 6 haneli geçerli bir kod giriniz.'; err.style.display = 'block'; return; }
+  if (!name) { err.textContent = 'Lütfen adınızı giriniz.'; err.style.display = 'block'; return; }
+
+  myName = name;
+  myPin = pin;
+  myScore = 0;
+
+  socket.emit('join-session', { pin, name, avatar: myAvatar });
+
+  socket.once('join-success', (data) => {
+    show('avatar');
+    initAvatarBuilder();
+  });
+
+  socket.once('join-error', (data) => {
+    err.textContent = data.message || 'Bağlanamadı.';
+    err.style.display = 'block';
+  });
+}
+
+function confirmAvatar() {
+  socket.emit('update-avatar', { pin: myPin, name: myName, avatar: myAvatar });
+  document.getElementById('w-av-svg').innerHTML = AA.buildAvatarSVG(myAvatar);
+  document.getElementById('w-name').textContent = myName;
+  document.getElementById('w-pin').textContent = myPin;
+  show('waiting');
+  setBgMusic('lobby');
+}
+
+// ═══════════════════════════════ PLAYER: SORU EKRANI ═══════════════════════════════
+function showPlayerQuestion(qi, q) {
+  stopConfetti();
+  if (!q) return;
+  const t = q.time || 20;
+  let tl = t;
+  setBgMusic('question');
+  show('qplayer');
+  document.getElementById('pqnum').textContent = qi + 1;
+  document.getElementById('pqtxt').textContent = q.text;
+  document.getElementById('pqbar').style.width = '100%';
+  document.getElementById('timer-p').textContent = t;
+  document.getElementById('timer-p').classList.remove('urgent');
+  document.getElementById('pfeedback').innerHTML = '';
+
+  const shapes = ['▲', '●', '■', '♦'];
+  const cls = ['aa', 'ab', 'ac', 'ad'];
+  document.getElementById('paans').innerHTML = (q.answers || []).map((a, i) =>
+    `<button class="pabtn ${cls[i]}" onclick="submitAns(${i},${qi})" id="pb-${i}"><span>${shapes[i]}</span> ${a.text}</button>`
+  ).join('');
+
+  clearInts();
+  timerInt = setInterval(() => {
+    tl--;
+    const te = document.getElementById('timer-p');
+    if (te) te.textContent = Math.max(0, tl);
+    const b = document.getElementById('pqbar');
+    if (b) b.style.width = Math.max(0, tl / t * 100) + '%';
+    if (tl <= 5 && tl > 0) { const tc = document.getElementById('timer-p'); if (tc) tc.classList.add('urgent'); sfxCountdown(); }
+  }, 1000);
+}
+
+function submitAns(ai, qi) {
+  sfxSelect();
+  socket.emit('submit-answer', { pin: myPin, name: myName, qIdx: qi, choice: ai });
+  for (let i = 0; i < 4; i++) {
+    const b = document.getElementById('pb-' + i);
+    if (b) { b.style.opacity = '0.4'; b.style.pointerEvents = 'none'; }
+  }
+  document.getElementById('pfeedback').innerHTML = '<div style="color:var(--tt-cyan); font-weight:bold; font-size:1.2rem;">✓ Yanıtınız Kaydedildi</div>';
+}
+
+socket.on('answer-recorded', (data) => {
+  console.log('Yanıt kaydedildi:', data);
+});
+
+function showPlayerReveal(qi, correctIndexes, playerScores) {
+  clearInts();
+  stopBgMusic();
+  const q = curQuestion;
+  if (!q) return;
+
+  const myAnsBtn = document.querySelector(`#paans .pabtn[onclick*="submitAns("][style*="opacity"]`);
+  let myChoice = -1;
+  for (let i = 0; i < 4; i++) {
+    const b = document.getElementById('pb-' + i);
+    if (b && b.style.opacity === '0.4') {
+      if (myChoice === -1) myChoice = i;
+    }
+  }
+
+  const shapes = ['▲', '●', '■', '♦'];
+  const cls = ['aa', 'ab', 'ac', 'ad'];
+  if (q.answers) {
+    document.getElementById('paans').innerHTML = q.answers.map((a, i) =>
+      `<button class="pabtn ${cls[i]}" style="opacity:${correctIndexes.includes(i) ? 1 : .3};pointer-events:none"><span>${shapes[i]}</span> ${a.text}</button>`
+    ).join('');
+  }
+
+  myScore = (playerScores && playerScores[myName]) || myScore;
+  const correct = myChoice >= 0 && correctIndexes.includes(myChoice);
+
+  if (correct) {
+    sfxCorrect();
+    startPlayerConfetti();
+    document.getElementById('pfeedback').innerHTML = `<div style="font-size:2.5rem;font-weight:900;color:var(--success);animation:sdown .3s">✓ DOĞRU!</div><div style="color:var(--tt-cyan);font-weight:800;margin-top:.5rem; font-size:1.2rem;">Toplam Puan: ${myScore}</div>`;
+  } else {
+    sfxWrong();
+    document.getElementById('pfeedback').innerHTML = `<div style="font-size:2.5rem;font-weight:900;color:var(--danger);animation:sdown .3s">✗ YANLIŞ</div><div style="color:rgba(255,255,255,.6);font-size:1.1rem;margin-top:.5rem; font-weight:bold;">Toplam Puan: ${myScore}</div>`;
+  }
+}
+
+// ═══════════════════════════════ KONFETİ ═══════════════════════════════
+function startHostConfetti(){
+  const canvas=document.getElementById('confetti-canvas');if(!canvas)return;
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;canvas.style.display='block';
+  const colors=['#00B5E2','#002C5F','#ffffff','#f1c40f','#2ecc71'];
+  const pieces=Array.from({length:200},()=>({
+    x:Math.random()*canvas.width,y:Math.random()*-canvas.height,
+    w:8+Math.random()*10,h:6+Math.random()*8,
+    r:Math.random()*Math.PI*2,dr:(.015+Math.random()*.05)*(Math.random()<.5?1:-1),
+    vy:2+Math.random()*4,vx:(Math.random()-.5)*3,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    shape:Math.random()<.4?'circle':'rect',alpha:1
+  }));
+  let frame=0;
+  function draw(){
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.save();ctx.globalAlpha=p.alpha;ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.color;
+      if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.w/2,0,Math.PI*2);ctx.fill();}
+      else ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+      p.x+=p.vx;p.y+=p.vy;p.r+=p.dr;p.vx+=Math.sin(frame*.02+p.x*.008)*.08;
+      if(p.y>canvas.height+20){p.y=-20;p.x=Math.random()*canvas.width;}
+    });
+    frame++;
+    if(frame<1000)confAnim=requestAnimationFrame(draw);
+    else stopConfetti();
+  }
+  if(confAnim)cancelAnimationFrame(confAnim);
+  draw();
+}
+
+function startPlayerConfetti(){
+  const canvas=document.getElementById('confetti-canvas');if(!canvas)return;
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;canvas.style.display='block';
+  const colors=['#2ecc71','#00B5E2','#ffffff','#f1c40f'];
+  const cx=canvas.width/2,cy=canvas.height*0.4;
+  const pieces=Array.from({length:100},()=>{
+    const angle=Math.random()*Math.PI*2;
+    const speed=6+Math.random()*10;
+    return{x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-8,w:7+Math.random()*8,h:5+Math.random()*6,r:Math.random()*Math.PI*2,dr:(.04+Math.random()*.08)*(Math.random()<.5?1:-1),color:colors[Math.floor(Math.random()*colors.length)],alpha:1,gravity:.4};
+  });
+  let frame=0;
+  function draw(){
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    pieces.forEach(p=>{
+      if(p.alpha<=0.01)return;
+      alive=true;
+      ctx.save();ctx.globalAlpha=p.alpha;ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.color;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;p.vx*=.96;p.r+=p.dr;
+      if(frame>40)p.alpha=Math.max(0,p.alpha-0.02);
+    });
+    frame++;
+    if(alive&&frame<150)confAnim=requestAnimationFrame(draw);
+    else stopConfetti();
+  }
+  if(confAnim)cancelAnimationFrame(confAnim);
+  draw();
+}
+
+function stopConfetti(){
+  if(confAnim)cancelAnimationFrame(confAnim);
+  confAnim=null;
+  const c=document.getElementById('confetti-canvas');
+  if(c){const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);c.style.display='none';}
+}
+
+window.addEventListener('resize',()=>{const c=document.getElementById('confetti-canvas');if(c&&c.style.display!=='none'){c.width=window.innerWidth;c.height=window.innerHeight;}});
+
+window.addEventListener('load',()=>{
+  const params=new URLSearchParams(window.location.search);
+  const joinPin=params.get('join');
+  if(joinPin){show('join');document.getElementById('join-pin').value=joinPin;}
+});
+
+// ═════════════════════════════ EXCEL UPLOAD ═════════════════════════════
+async function handleExcelUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (typeof XLSX === 'undefined') {
+    toast('❌ Excel kütüphanesi yükleniyor, lütfen bekle...');
+    setTimeout(() => handleExcelUpload(event), 2000);
+    return;
+  }
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const parsedQuestions = [];
+        const headers = rows[0];
+        const indexes = {
+          soruTipi: headers.indexOf('Soru Tipi'),
+          soruMetni: headers.indexOf('Soru Metni'),
+          seçenekSayısı: headers.indexOf('Seçenek Sayısı'),
+          a: headers.indexOf('A'), b: headers.indexOf('B'),
+          c: headers.indexOf('C'), d: headers.indexOf('D'), e: headers.indexOf('E'),
+          doğru1: headers.indexOf('Doğru Seçenek 1'), doğru2: headers.indexOf('Doğru Seçenek 2'),
+          doğru3: headers.indexOf('Doğru Seçenek 3'), doğru4: headers.indexOf('Doğru Seçenek 4'),
+          doğru5: headers.indexOf('Doğru Seçenek 5'),
+        };
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row[indexes.soruMetni]) continue;
+          const soruTipi = row[indexes.soruTipi];
+          const seçenekSayısı = row[indexes.seçenekSayısı] || 4;
+          const seçenekler = [];
+          const seçenekLabels = ['a', 'b', 'c', 'd', 'e'];
+          for (let j = 0; j < seçenekSayısı; j++) {
+            const seçenek = row[indexes[seçenekLabels[j]]];
+            if (seçenek) seçenekler.push(seçenek);
+          }
+          const doğruCevaplar = [];
+          const doğruIndexes = [indexes.doğru1, indexes.doğru2, indexes.doğru3, indexes.doğru4, indexes.doğru5];
+          for (const idx of doğruIndexes) {
+            if (idx !== -1 && row[idx]) {
+              const cevap = row[idx].toString().trim().toUpperCase();
+              const cevapIndex = seçenekLabels.indexOf(cevap.toLowerCase());
+              if (cevapIndex !== -1) doğruCevaplar.push(cevapIndex);
+            }
+          }
+          let type = 'multiple';
+          if (soruTipi === 2) type = 'trueFalse';
+          else if (soruTipi === 3) type = 'multiAnswer';
+          parsedQuestions.push({
+            text: row[indexes.soruMetni], type: type,
+            answers: seçenekler.map((txt, j) => ({ text: txt, correct: doğruCevaplar.includes(j) })),
+            time: 20, pts: 'standard'
+          });
+        }
+
+        if (parsedQuestions.length > 0) {
+          questions = [...questions, ...parsedQuestions];
+          saveQ(); renderQL();
+          if (selQIdx < 0 && questions.length > 0) { selQIdx = 0; renderE(0); }
+          toast(`✅ ${parsedQuestions.length} soru başarıyla yüklendi!`);
+        } else {
+          toast('⚠️ Excel dosyasında soru bulunamadı!');
+        }
+      } catch (err) {
+        toast(`❌ Hata: ${err.message}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } catch (err) {
+    toast(`❌ Dosya okuma hatası: ${err.message}`);
+  }
+  event.target.value = '';
+}
+</script>
+</body>
+</html>
