@@ -1,20 +1,27 @@
-// Export your models here. Add one export per file
-// export * from "./posts";
-//
-// Each model/table should ideally be split into different files.
-// Each model/table should define a Drizzle table, insert schema, and types:
-//
-//   import { pgTable, text, serial } from "drizzle-orm/pg-core";
-//   import { createInsertSchema } from "drizzle-zod";
-//   import { z } from "zod/v4";
-//
-//   export const postsTable = pgTable("posts", {
-//     id: serial("id").primaryKey(),
-//     title: text("title").notNull(),
-//   });
-//
-//   export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
-//   export type InsertPost = z.infer<typeof insertPostSchema>;
-//   export type Post = typeof postsTable.$inferSelect;
+import { pgTable, serial, varchar, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
 
-export {}
+export const authorizedUsersTable = pgTable("authorized_users", {
+  id: serial("id").primaryKey(),
+  sicil: varchar("sicil", { length: 50 }).notNull().unique(),
+  adSoyad: varchar("ad_soyad", { length: 255 }).notNull(),
+  yetki: varchar("yetki", { length: 20 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const questionSetsTable = pgTable("question_sets", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  questions: jsonb("questions").notNull(),
+  createdBy: varchar("created_by", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAuthorizedUserSchema = createInsertSchema(authorizedUsersTable).omit({ id: true, createdAt: true });
+export const insertQuestionSetSchema = createInsertSchema(questionSetsTable).omit({ id: true, createdAt: true });
+
+export type AuthorizedUser = typeof authorizedUsersTable.$inferSelect;
+export type InsertAuthorizedUser = z.infer<typeof insertAuthorizedUserSchema>;
+export type QuestionSet = typeof questionSetsTable.$inferSelect;
+export type InsertQuestionSet = z.infer<typeof insertQuestionSetSchema>;

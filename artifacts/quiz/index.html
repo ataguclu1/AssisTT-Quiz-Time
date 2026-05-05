@@ -193,10 +193,32 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
   <div class="card">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height:36px;margin:0 auto">
     <div style="font-size:1.4rem;font-weight:800;color:var(--tt-cyan)">Sistem Girişi</div>
-    <input class="inp" type="password" id="admin-pw" placeholder="Erişim Şifresi..." onkeydown="if(event.key==='Enter')adminLogin()">
-    <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">Oturum Aç →</button>
-    <div class="err-msg" id="admin-err">Hatalı şifre!</div>
+    <div>
+      <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">SİCİL NUMARASI</label>
+      <input class="inp" type="text" id="login-sicil" placeholder="Örn: A053252" maxlength="20" oninput="this.value=this.value.toUpperCase();document.getElementById('login-pw-wrap').style.display=(this.value==='A053252'?'':'none')" onkeydown="if(event.key==='Enter')siciLogin()">
+    </div>
+    <div id="login-pw-wrap" style="display:none">
+      <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">ŞİFRE (YÖNETİCİ)</label>
+      <input class="inp" type="password" id="login-pw" placeholder="Şifrenizi girin..." onkeydown="if(event.key==='Enter')siciLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="siciLogin()">Giriş Yap →</button>
+    <div class="err-msg" id="login-err" style="display:none">Giriş başarısız!</div>
     <button class="btn btn-outline btn-sm" onclick="show('landing')">← Ana Ekran</button>
+  </div>
+</div>
+
+<!-- ═══ LIMITED USER PANEL ═══ -->
+<div id="screen-limited" class="screen center-screen" style="flex-direction:column;gap:1.2rem">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height:48px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))">
+  <div style="font-size:2rem;font-weight:900">Quiz <span style="color:var(--tt-cyan)">Time</span></div>
+  <div style="color:rgba(255,255,255,.5);font-size:.95rem" id="limited-adsoyad"></div>
+  <div class="card" style="max-width:480px;gap:1.2rem">
+    <div>
+      <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">SORU SETİ SEÇ</label>
+      <select class="inp" id="limited-sets" style="background:rgba(255,255,255,.07);color:#fff;cursor:pointer"></select>
+    </div>
+    <button class="btn btn-success" onclick="startLimitedLobby()" style="width:100%;font-size:1.05rem;padding:1rem">▶ Lobiyi Başlat</button>
+    <button class="btn btn-outline btn-sm" onclick="logout()" style="width:100%">🚪 Çıkış Yap</button>
   </div>
 </div>
 
@@ -204,8 +226,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
 <div id="screen-admin" class="screen">
   <div class="ahdr">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height:28px">
-    <span style="font-size:1.1rem;font-weight:800;flex:1">Quiz <span style="color:var(--tt-cyan)">Time</span> <span style="font-size:.8rem;color:rgba(255,255,255,.4);font-weight:600">Yönetici Paneli</span></span>
-    <button class="btn btn-sm btn-outline" onclick="show('landing')">Çıkış</button>
+    <span style="font-size:1.1rem;font-weight:800;flex:1">Quiz <span style="color:var(--tt-cyan)">Time</span> <span style="font-size:.8rem;color:rgba(255,255,255,.4);font-weight:600" id="admin-role-label">Yönetici Paneli</span></span>
+    <span style="font-size:.8rem;color:rgba(255,255,255,.6);margin-right:.5rem" id="admin-user-label"></span>
+    <button class="btn btn-sm btn-outline" onclick="logout()">Çıkış</button>
     <button class="btn btn-sm btn-success" onclick="startLobby()">▶ Lobiyi Başlat</button>
   </div>
   <div class="abody">
@@ -219,16 +242,29 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
       <button class="btn btn-danger btn-sm" style="width:100%" onclick="clearAllQ()">🗑️ Tüm Soruları Sil</button>
       <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
 
-      <!-- QUIZ LIBRARY -->
+      <!-- QUIZ LIBRARY (DB-backed) -->
       <h3>Sınav Kütüphanesi</h3>
       <div class="lib-list" id="lib-list"></div>
       <button class="btn btn-outline btn-sm" style="width:100%" onclick="saveToLibrary()">💾 Mevcut Soruları Kaydet</button>
 
+      <!-- USER MANAGEMENT (Admin only) -->
+      <div id="user-mgmt-section" style="display:none">
+        <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
+        <h3>👥 Kullanıcı Yönetimi</h3>
+        <div class="lib-list" id="user-list" style="max-height:120px"></div>
+        <div class="fg" style="margin:.4rem 0 0"><label>Sicil No</label><input type="text" id="new-sicil" placeholder="Örn: B012345" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg" style="margin:.4rem 0 0"><label>Ad Soyad</label><input type="text" id="new-adsoyad" placeholder="Ad Soyad"></div>
+        <div class="fg" style="margin:.4rem 0 0"><label>Yetki</label>
+          <select id="new-yetki">
+            <option value="full">Tam Yetki (Soru + Oyun)</option>
+            <option value="limited">Sınırlı (Sadece Oyun)</option>
+          </select>
+        </div>
+        <button class="btn btn-sm btn-primary" style="width:100%" onclick="addUser()">+ Kullanıcı Ekle</button>
+      </div>
+
       <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
-      <h3>Sistem Ayarları</h3>
       <div class="fg" style="margin:0"><label>Oturum Adı</label><input type="text" id="quiz-title" value="AssisTT Eğitim Quiz"></div>
-      <div class="fg" style="margin:0"><label>Erişim Şifresi</label><input type="password" id="admin-pw-c" placeholder="Yeni şifre..."></div>
-      <button class="btn btn-sm btn-outline" style="width:100%" onclick="changePw()">Şifreyi Güncelle</button>
     </div>
     <!-- EDITOR -->
     <div class="editor" id="editor">
@@ -470,10 +506,61 @@ function selAv(style, seed, el) {
   document.getElementById('av-svg').innerHTML = buildAvatarSVG(myAvatar);
 }
 
+// ══════════════════════ AUTH ══════════════════════
+const ADMIN_SICIL_KEY = 'A053252';
+let authToken    = localStorage.getItem('auth_token') || '';
+let currentRole  = localStorage.getItem('auth_role') || '';   // 'admin' | 'full' | 'limited'
+let currentSicil = localStorage.getItem('auth_sicil') || '';
+let currentAdSoyad = localStorage.getItem('auth_adsoyad') || '';
+
+async function apiCall(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('/api' + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Sunucu hatası');
+  return data;
+}
+
+async function siciLogin() {
+  const sicil = (document.getElementById('login-sicil').value || '').trim().toUpperCase();
+  const pw = document.getElementById('login-pw').value || '';
+  const err = document.getElementById('login-err');
+  if (err) err.style.display = 'none';
+  if (!sicil) { if(err){err.textContent='Sicil numarası girin.';err.style.display='block';} return; }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sicil, password: sicil === ADMIN_SICIL_KEY ? pw : undefined })
+    });
+    const data = await res.json();
+    if (!res.ok) { if(err){err.textContent=data.error||'Giriş başarısız.';err.style.display='block';} return; }
+    authToken = data.token; currentRole = data.role; currentSicil = data.sicil; currentAdSoyad = data.adSoyad;
+    localStorage.setItem('auth_token', authToken); localStorage.setItem('auth_role', currentRole);
+    localStorage.setItem('auth_sicil', currentSicil); localStorage.setItem('auth_adsoyad', currentAdSoyad);
+    document.getElementById('login-pw').value = ''; document.getElementById('login-sicil').value = '';
+    document.getElementById('login-pw-wrap').style.display = 'none';
+    afterLogin();
+  } catch(e) { if(err){err.textContent=e.message||'Bağlantı hatası.';err.style.display='block';} }
+}
+
+function logout() {
+  authToken = ''; currentRole = ''; currentSicil = ''; currentAdSoyad = '';
+  localStorage.removeItem('auth_token'); localStorage.removeItem('auth_role');
+  localStorage.removeItem('auth_sicil'); localStorage.removeItem('auth_adsoyad');
+  show('landing');
+}
+
+async function afterLogin() {
+  if (currentRole === 'limited') { await showLimitedPanel(); }
+  else { showAdmin(); }
+}
+
 // ══════════════════════ GAME STATE ══════════════════════
 let questions     = JSON.parse(localStorage.getItem('ql_q') || '[]');
-let quizLibrary   = JSON.parse(localStorage.getItem('ql_lib') || '[]');
-let ADMIN_PW      = localStorage.getItem('ql_pw') || 'admin123';
+let quizLibrary   = [];
 let selQIdx=-1, gamePin='', players=[], isHost=false, myName='', myPin='';
 let timerInt=null, timerLeft=20, revealed=false, curQIdx=0;
 let confAnim=null, curQuestion=null, totalQuestions=0;
