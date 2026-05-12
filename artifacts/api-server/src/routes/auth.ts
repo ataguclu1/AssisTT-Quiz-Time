@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { authorizedUsersTable } from "@workspace/db";
+import { authorizedUsersTable, systemConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken, requireAuth } from "../middlewares/auth";
 import type { AuthPayload } from "../middlewares/auth";
@@ -10,7 +10,15 @@ import bcrypt from "bcryptjs";
 const router = Router();
 
 const ADMIN_SICIL = "A053252";
-const ADMIN_PASSWORD = "admin123";
+const ADMIN_DEFAULT_PASSWORD = "admin123";
+
+async function getAdminPasswordHash(): Promise<string | null> {
+  const rows = await db
+    .select()
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "admin_password_hash"));
+  return rows.length > 0 ? rows[0].value : null;
+}
 
 router.post("/login", async (req, res) => {
   const { sicil, password } = req.body as { sicil: string; password?: string };
@@ -21,7 +29,18 @@ router.post("/login", async (req, res) => {
   }
 
   if (sicil === ADMIN_SICIL) {
-    if (password !== ADMIN_PASSWORD) {
+    if (!password) {
+      res.status(400).json({ error: "Şifre gereklidir." });
+      return;
+    }
+    const storedHash = await getAdminPasswordHash();
+    let valid: boolean;
+    if (storedHash) {
+      valid = await bcrypt.compare(password, storedHash);
+    } else {
+      valid = password === ADMIN_DEFAULT_PASSWORD;
+    }
+    if (!valid) {
       res.status(401).json({ error: "Hatalı şifre." });
       return;
     }
@@ -71,17 +90,33 @@ router.post("/change-password", requireAuth, async (req, res) => {
   const user = (req as Request & { user: AuthPayload }).user;
   const { oldPassword, newPassword } = req.body as { oldPassword: string; newPassword: string };
 
-  if (user.role === "admin") {
-    res.status(400).json({ error: "Yönetici şifresi bu panel üzerinden değiştirilemez." });
-    return;
-  }
-
   if (!oldPassword || !newPassword) {
     res.status(400).json({ error: "Mevcut ve yeni şifre zorunludur." });
     return;
   }
   if (newPassword.length < 4) {
     res.status(400).json({ error: "Yeni şifre en az 4 karakter olmalıdır." });
+    return;
+  }
+
+  if (user.role === "admin") {
+    const storedHash = await getAdminPasswordHash();
+    let valid: boolean;
+    if (storedHash) {
+      valid = await bcrypt.compare(oldPassword, storedHash);
+    } else {
+      valid = oldPassword === ADMIN_DEFAULT_PASSWORD;
+    }
+    if (!valid) {
+      res.status(401).json({ error: "Mevcut şifre hatalı." });
+      return;
+    }
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db
+      .insert(systemConfigTable)
+      .values({ key: "admin_password_hash", value: newHash })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: newHash } });
+    res.json({ success: true });
     return;
   }
 

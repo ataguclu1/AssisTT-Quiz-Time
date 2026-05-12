@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, jsonb, timestamp, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -17,6 +17,11 @@ export const questionSetsTable = pgTable("question_sets", {
   questions: jsonb("questions").notNull(),
   createdBy: varchar("created_by", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const systemConfigTable = pgTable("system_config", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: text("value").notNull(),
 });
 
 export const insertAuthorizedUserSchema = createInsertSchema(authorizedUsersTable).omit({ id: true, createdAt: true });

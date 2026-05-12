@@ -458,60 +458,152 @@ function sfxReveal()   { [400,500,600,700].forEach((f,i)=>playNote(f,'sine',.1,.
 function sfxFanfare()  { [523,659,784,1047].forEach((f,i)=>playNote(f,'sine',.22,.3,sfxGain,i*.13)); }
 function sfxCountdown(){ playNote(880,'sine',.05,.2,sfxGain); }
 
-// Upbeat background music
+// ── MUSIC ENGINE (hyper-energetic) ──────────────────────────────────
+function kick(now) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(musicGain);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(180, now);
+  o.frequency.exponentialRampToValueAtTime(30, now + 0.14);
+  g.gain.setValueAtTime(0.55, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  o.start(now); o.stop(now + 0.25);
+}
+function snare(now) {
+  const g = AC.createGain();
+  g.connect(musicGain);
+  g.gain.setValueAtTime(0.28, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+  const buf = AC.createBuffer(1, AC.sampleRate * 0.15, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 0.8);
+  const s = AC.createBufferSource(); s.buffer = buf; s.connect(g); s.start(now);
+  // tone layer
+  const o = AC.createOscillator(), og = AC.createGain();
+  o.connect(og); og.connect(musicGain);
+  o.type = 'triangle'; o.frequency.value = 220;
+  og.gain.setValueAtTime(0.08, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+  o.start(now); o.stop(now + 0.1);
+}
+function hihat(now, open) {
+  const g = AC.createGain(); g.connect(musicGain);
+  const dur = open ? 0.12 : 0.032;
+  g.gain.setValueAtTime(open ? 0.045 : 0.032, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  const buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 0.4);
+  const s = AC.createBufferSource(); s.buffer = buf; s.connect(g); s.start(now);
+}
+function bass(now, freq, dur) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(musicGain);
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.18, now);
+  g.gain.setValueAtTime(0.12, now + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  o.start(now); o.stop(now + dur + 0.02);
+}
+function lead(now, freq, dur, vol) {
+  const o = AC.createOscillator(), g = AC.createGain(), filt = AC.createBiquadFilter();
+  o.connect(filt); filt.connect(g); g.connect(musicGain);
+  filt.type = 'lowpass'; filt.frequency.value = 2800; filt.Q.value = 2;
+  o.type = 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(vol, now + 0.015);
+  g.gain.setValueAtTime(vol * 0.7, now + dur * 0.5);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  o.start(now); o.stop(now + dur + 0.02);
+}
+function chord(now, freqs, dur, vol) {
+  freqs.forEach(f => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(musicGain);
+    o.type = 'sawtooth'; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    o.start(now); o.stop(now + dur + 0.01);
+  });
+}
+
 function startBgMusic(style = 'lobby') {
   stopBgMusic();
   if (!musicOn) return;
   currentMusicStyle = style;
-  const bpm = style === 'question' ? 145 : 122;
-  const beat = 60 / bpm;
-  // Energetic melody patterns
-  const melodies = {
-    lobby:    [523,659,784,880,784,659,523,440,523,659,523,392,440,523,659,523],
-    question: [784,880,988,1047,988,880,784,659,784,880,784,659,698,784,880,784]
-  };
-  const mel = melodies[style] || melodies.lobby;
+
+  const BPM   = style === 'question' ? 175 : 148;
+  const beat  = 60 / BPM;           // one quarter-note
+  const s16   = beat / 4;           // one sixteenth-note
+
+  // ── Lobby: funky driving groove ──────────────────────────────────
+  const LOBBY_BASS  = [131,131,147,131, 131,131,147,175, 117,117,131,117, 117,117,131,147];
+  const LOBBY_MEL   = [523,0,659,0,784,659,0,784, 880,0,784,659,0,523,659,0,
+                       523,0,659,0,784,659,523,0,  440,0,523,659,0,784,659,523];
+  // ── Question: frantic rave lead ───────────────────────────────────
+  const Q_BASS      = [220,220,220,247, 220,220,262,220, 196,196,220,196, 196,196,220,247];
+  const Q_MEL       = [784,880,988,784, 1047,988,880,784, 784,880,784,698, 784,698,784,880,
+                       988,1047,988,880, 784,880,988,784, 698,784,698,659, 698,659,698,784];
+
+  const bassNotes = style === 'question' ? Q_BASS : LOBBY_BASS;
+  const melNotes  = style === 'question' ? Q_MEL  : LOBBY_MEL;
+
+  // kick/snare/hat patterns (16 steps per bar)
+  const kickPat  = style === 'question'
+    ? [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0]  // four-on-the-floor rave
+    : [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0]; // syncopated funk
+  const snarePat = style === 'question'
+    ? [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0]
+    : [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0];
+  const hatPat   = style === 'question'
+    ? [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]   // every 16th
+    : [1,0,1,0,1,0,1,1,1,0,1,0,1,1,1,0];
+  const openHat  = style === 'question'
+    ? [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0]
+    : [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0];
+
+  // Chord stabs (lobby only)
+  const CHORDS = [[261,329,392],[293,369,440],[220,277,349],[246,311,369]];
+  const chordPat = [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0];
+
   let step = 0;
+  const BAR = 16;
+
   function tick() {
     if (!musicOn) return;
     const now = AC.currentTime;
-    const freq = mel[step % mel.length];
-    // Lead melody
-    playNote(freq, 'square', beat * 0.55, 0.028, musicGain);
-    // Harmony (third up)
-    playNote(freq * 1.26, 'triangle', beat * 0.45, 0.016, musicGain);
-    // Bass on every beat
-    playNote(freq / 2, 'sine', beat * 0.9, 0.055, musicGain);
-    // Kick drum (beats 0, 2)
-    if (step % 4 === 0 || step % 4 === 2) {
-      const ko = AC.createOscillator(), kg = AC.createGain();
-      ko.connect(kg); kg.connect(musicGain);
-      ko.type = 'sine';
-      ko.frequency.setValueAtTime(120, now);
-      ko.frequency.exponentialRampToValueAtTime(40, now + 0.12);
-      kg.gain.setValueAtTime(0.22, now);
-      kg.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      ko.start(now); ko.stop(now + 0.2);
+    const i16 = step % BAR;
+
+    // Drums
+    if (kickPat[i16])  kick(now);
+    if (snarePat[i16]) snare(now);
+    if (hatPat[i16])   hihat(now, false);
+    if (openHat[i16])  hihat(now, true);
+
+    // Extra double-kick on question mode every 4th bar buildup
+    if (style === 'question' && i16 === 12 && Math.floor(step / BAR) % 2 === 1) kick(now);
+
+    // Bass line
+    const bf = bassNotes[i16];
+    if (bf) bass(now, bf, s16 * 1.8);
+
+    // Melody lead (every 2 steps for a bit of rest, louder in question mode)
+    const mf = melNotes[step % melNotes.length];
+    if (mf) lead(now, mf, s16 * (style === 'question' ? 1.6 : 1.4), style === 'question' ? 0.055 : 0.04);
+
+    // Chord stabs (lobby only, on accent beats)
+    if (style !== 'question' && chordPat[i16]) {
+      const ch = CHORDS[Math.floor(step / BAR) % CHORDS.length];
+      chord(now, ch, s16 * 2.5, 0.022);
     }
-    // Hi-hat (every beat)
-    const hg = AC.createGain(), hf = AC.createOscillator();
-    hf.connect(hg); hg.connect(musicGain);
-    hf.type = 'square'; hf.frequency.value = 6000 + Math.random() * 3000;
-    hg.gain.setValueAtTime(0.012, now);
-    hg.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-    hf.start(now); hf.stop(now + 0.05);
-    // Snare on beats 1 and 3
-    if (step % 4 === 1 || step % 4 === 3) {
-      const sg = AC.createGain(), buf = AC.createBuffer(1, AC.sampleRate * 0.12, AC.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let x = 0; x < data.length; x++) data[x] = (Math.random() * 2 - 1) * Math.pow(1 - x / data.length, 1.2);
-      const sn = AC.createBufferSource();
-      sn.buffer = buf; sn.connect(sg); sg.connect(musicGain);
-      sg.gain.setValueAtTime(0.09, now); sg.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      sn.start(now);
+
+    // Rave chord stabs on question every 8 steps
+    if (style === 'question' && i16 % 8 === 0) {
+      const f = bassNotes[i16] * 2;
+      chord(now, [f, f*1.25, f*1.5], beat * 0.4, 0.028);
     }
+
     step++;
-    bgMusicTimer = setTimeout(tick, beat * 1000);
+    bgMusicTimer = setTimeout(tick, s16 * 1000);
   }
   tick();
 }
@@ -654,14 +746,20 @@ function showAdmin() {
   // User management: admin only
   const userMgmt = document.getElementById('user-mgmt-section');
   if (userMgmt) userMgmt.style.display = currentRole === 'admin' ? '' : 'none';
-  // Change password button: for non-admin users only
+  // Change password button: admin + full + manager (everyone except limited)
   const cpwBtn = document.getElementById('btn-changepw-hdr');
-  if (cpwBtn) cpwBtn.style.display = currentRole !== 'admin' ? '' : 'none';
-  // Add/delete question controls: full, manager, admin
-  const canEdit = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
-  ['btn-add-q','btn-excel','btn-clear-q','btn-save-lib'].forEach(id => {
+  if (cpwBtn) cpwBtn.style.display = currentRole !== 'limited' ? '' : 'none';
+  // Add question controls: full + manager + admin
+  const canAdd = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
+  ['btn-add-q','btn-excel'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = canEdit ? '' : 'none';
+    if (el) el.style.display = canAdd ? '' : 'none';
+  });
+  // Delete all + save to library: manager + admin only
+  const canManage = currentRole === 'admin' || currentRole === 'manager';
+  ['btn-clear-q','btn-save-lib'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = canManage ? '' : 'none';
   });
   show('admin');
   renderQL();
@@ -675,12 +773,12 @@ function clearAllQ() { if(!confirm(`${questions.length} sorunun tamamını silme
 function renderQL() {
   document.getElementById('q-count').textContent = questions.length;
   const ul = document.getElementById('q-list');
-  const canEdit = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
+  const canDelete = currentRole === 'admin' || currentRole === 'manager';
   if (!questions.length) { ul.innerHTML='<div style="color:rgba(255,255,255,.3);padding:.8rem;font-size:.85rem">Henüz soru yok</div>';return; }
   ul.innerHTML = questions.map((q,i)=>`<li class="qi ${i===selQIdx?'active':''}" onclick="selQ(${i})">
     <div class="qnum">${i+1}</div>
     <div class="qtx">${q.text||'(Boş)'}</div>
-    ${canEdit ? `<span onclick="delQ(event,${i})" style="color:var(--bad);cursor:pointer;padding:4px;font-weight:900;font-size:1rem" title="Sil">✕</span>` : ''}
+    ${canDelete ? `<span onclick="delQ(event,${i})" style="color:var(--bad);cursor:pointer;padding:4px;font-weight:900;font-size:1rem" title="Sil">✕</span>` : ''}
   </li>`).join('');
 }
 function selQ(i) { selQIdx=i;renderQL();renderE(i); }
@@ -712,7 +810,7 @@ function renderE(i) {
   </div>
   <div style="display:flex;gap:.8rem;margin-top:1rem">
     <button class="btn btn-primary" onclick="saveQ2(${i})">💾 Kaydet</button>
-    <button class="btn btn-danger btn-sm" onclick="delQ(null,${i})">Sil</button>
+    ${(currentRole==='admin'||currentRole==='manager') ? `<button class="btn btn-danger btn-sm" onclick="delQ(null,${i})">Sil</button>` : ''}
   </div>`;
 }
 function togC(j){const b=document.getElementById('ebox-'+j);const t=b.querySelector('.ct');b.classList.toggle('correct');t.textContent=b.classList.contains('correct')?'✓':'';}
@@ -728,8 +826,8 @@ function saveQ2(i){
 function addQ(){questions.push({text:'',time:20,pts:'standard',answers:[{text:'',correct:false},{text:'',correct:false},{text:'',correct:false},{text:'',correct:false}]});saveQ();selQIdx=questions.length-1;renderQL();renderE(selQIdx);}
 function delQ(e,i){
   if(e)e.stopPropagation();
-  const canEdit = currentRole==='admin'||currentRole==='manager'||currentRole==='full';
-  if(!canEdit){toast('Bu işlem için yetkiniz yok!');return;}
+  const canDelete = currentRole==='admin'||currentRole==='manager';
+  if(!canDelete){toast('Bu işlem için yetkiniz yok!');return;}
   if(!confirm('Bu soruyu silmek istiyor musunuz?'))return;
   questions.splice(i,1);saveQ();selQIdx=Math.max(-1,Math.min(selQIdx,questions.length-1));renderQL();if(selQIdx>=0)renderE(selQIdx);else document.getElementById('editor').innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);margin-top:5rem">Soru seçin veya ekleyin.</div>';
 }
