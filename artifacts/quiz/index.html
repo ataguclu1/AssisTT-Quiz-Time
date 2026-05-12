@@ -904,8 +904,8 @@ function showHostQuestion(qi) {
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
   lastAnswerCounts = {};
   document.getElementById('qans-host').innerHTML = q.answers.map((a,i)=> {
-    if (!a.text || !a.text.trim()) return '';
-    return `<div class="abtn ${cls[i]}" id="ha-${i}"><div class="ashape">${shapes[i]}</div><span style="flex:1;text-align:left">${escHtml(normAnswerText(a.text))}</span><div class="hbar" id="hbar-${i}" style="width:0"></div></div>`;
+    if (!String(a.text ?? '').trim()) return '';
+    return `<div class="abtn ${cls[i]}" id="ha-${i}"><div class="ashape">${shapes[i]}</div><span style="flex:1;text-align:left">${escHtml(normAnswerText(String(a.text)))}</span><div class="hbar" id="hbar-${i}" style="width:0"></div></div>`;
   }).join('');
 
   clearInts();
@@ -1056,8 +1056,8 @@ function showPlayerQuestion(qi, q) {
 
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
   document.getElementById('paans').innerHTML = (q.answers||[]).map((a,i) => {
-    if (!a.text || !a.text.trim()) return '';
-    return `<button class="pabtn ${cls[i]}" id="pb-${i}" onclick="submitAns(${i},${qi})"><span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(a.text))}</button>`;
+    if (!String(a.text ?? '').trim()) return '';
+    return `<button class="pabtn ${cls[i]}" id="pb-${i}" onclick="submitAns(${i},${qi})"><span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(String(a.text)))}</button>`;
   }).join('');
 
   clearInts();
@@ -1100,11 +1100,11 @@ function showPlayerReveal(qi, correctIndexes, playerScores) {
   const q = curQuestion;
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
   document.getElementById('paans').innerHTML = (q && q.answers ? q.answers : []).map((a,i) => {
-    if (!a.text || !a.text.trim()) return '';
+    if (!String(a.text ?? '').trim()) return '';
     const isRight = correctIndexes.includes(i);
     const opacity = isRight ? 1 : 0.2;
     return `<button class="pabtn ${cls[i]}" disabled style="opacity:${opacity};${isRight?'box-shadow:0 0 0 2.5px #27ae60;':''}">
-      <span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(a.text))}
+      <span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(String(a.text)))}
     </button>`;
   }).join('');
 
