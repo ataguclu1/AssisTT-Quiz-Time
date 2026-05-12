@@ -2,7 +2,7 @@ import { Router, type Request } from "express";
 import { db } from "@workspace/db";
 import { questionSetsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireFull, type AuthPayload } from "../middlewares/auth";
+import { requireAuth, requireFull, requireManager, type AuthPayload } from "../middlewares/auth";
 
 const router = Router();
 
@@ -34,7 +34,7 @@ router.post("/", requireFull, async (req, res) => {
   res.status(201).json(set);
 });
 
-router.delete("/:id", requireFull, async (req, res) => {
+router.delete("/:id", requireManager, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Geçersiz ID." });

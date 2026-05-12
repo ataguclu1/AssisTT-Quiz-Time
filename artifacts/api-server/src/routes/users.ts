@@ -18,8 +18,8 @@ router.post("/", requireAdmin, async (req, res) => {
     res.status(400).json({ error: "Sicil, ad soyad ve yetki zorunludur." });
     return;
   }
-  if (!["full", "limited"].includes(yetki)) {
-    res.status(400).json({ error: "Yetki 'full' veya 'limited' olmalıdır." });
+  if (!["full", "limited", "manager"].includes(yetki)) {
+    res.status(400).json({ error: "Yetki 'limited', 'full' veya 'manager' olmalıdır." });
     return;
   }
 

@@ -41,7 +41,7 @@ router.post("/login", async (req, res) => {
   const token = signToken({
     sicil: user.sicil,
     adSoyad: user.adSoyad,
-    role: user.yetki as "full" | "limited",
+    role: user.yetki as "full" | "limited" | "manager",
   });
 
   res.json({ token, role: user.yetki, adSoyad: user.adSoyad, sicil: user.sicil });

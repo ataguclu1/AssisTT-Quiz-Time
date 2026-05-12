@@ -51,8 +51,19 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 export function requireFull(req: Request, res: Response, next: NextFunction) {
   requireAuth(req, res, () => {
     const user = (req as Request & { user: AuthPayload }).user;
-    if (user?.role !== "admin" && user?.role !== "full") {
-      res.status(403).json({ error: "Bu işlem için tam yetki gerekiyor." });
+    if (user?.role !== "admin" && user?.role !== "full" && user?.role !== "manager") {
+      res.status(403).json({ error: "Bu işlem için yetki gerekiyor." });
+      return;
+    }
+    next();
+  });
+}
+
+export function requireManager(req: Request, res: Response, next: NextFunction) {
+  requireAuth(req, res, () => {
+    const user = (req as Request & { user: AuthPayload }).user;
+    if (user?.role !== "admin" && user?.role !== "manager") {
+      res.status(403).json({ error: "Bu işlem için yönetici yetkisi gerekiyor." });
       return;
     }
     next();

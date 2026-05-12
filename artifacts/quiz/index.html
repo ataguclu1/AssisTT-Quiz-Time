@@ -236,16 +236,16 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
     <div class="sidebar">
       <h3>Soru Havuzu (<span id="q-count">0</span>)</h3>
       <ul class="qlist" id="q-list"></ul>
-      <button class="btn btn-outline btn-sm" style="width:100%" onclick="addQ()">+ Yeni Soru</button>
-      <button class="btn btn-primary btn-sm" style="width:100%" onclick="document.getElementById('excel-upload').click()">📊 Excel Yükle</button>
+      <button id="btn-add-q" class="btn btn-outline btn-sm" style="width:100%" onclick="addQ()">+ Yeni Soru</button>
+      <button id="btn-excel" class="btn btn-primary btn-sm" style="width:100%" onclick="document.getElementById('excel-upload').click()">📊 Excel Yükle</button>
       <input type="file" id="excel-upload" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
-      <button class="btn btn-danger btn-sm" style="width:100%" onclick="clearAllQ()">🗑️ Tüm Soruları Sil</button>
+      <button id="btn-clear-q" class="btn btn-danger btn-sm" style="width:100%" onclick="clearAllQ()">🗑️ Tüm Soruları Sil</button>
       <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
 
       <!-- QUIZ LIBRARY (DB-backed) -->
       <h3>Sınav Kütüphanesi</h3>
       <div class="lib-list" id="lib-list"></div>
-      <button class="btn btn-outline btn-sm" style="width:100%" onclick="saveToLibrary()">💾 Mevcut Soruları Kaydet</button>
+      <button id="btn-save-lib" class="btn btn-outline btn-sm" style="width:100%" onclick="saveToLibrary()">💾 Mevcut Soruları Kaydet</button>
 
       <!-- USER MANAGEMENT (Admin only) -->
       <div id="user-mgmt-section" style="display:none">
@@ -256,8 +256,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
         <div class="fg" style="margin:.4rem 0 0"><label>Ad Soyad</label><input type="text" id="new-adsoyad" placeholder="Ad Soyad"></div>
         <div class="fg" style="margin:.4rem 0 0"><label>Yetki</label>
           <select id="new-yetki">
-            <option value="full">Tam Yetki (Soru + Oyun)</option>
-            <option value="limited">Sınırlı (Sadece Oyun)</option>
+            <option value="manager">Tam Yetki (Ekle + Sil + Yayınla)</option>
+            <option value="full">Editör (Ekle + Yayınla)</option>
+            <option value="limited">Oyuncu (Sadece Yayınla)</option>
           </select>
         </div>
         <button class="btn btn-sm btn-primary" style="width:100%" onclick="addUser()">+ Kullanıcı Ekle</button>
@@ -316,10 +317,12 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
     <svg id="av-svg" viewBox="0 0 100 100" width="150" height="150"></svg>
   </div>
   <div class="av-tabs" id="av-tabs">
-    <button class="av-tab active" onclick="avTab('adventurer',this)">Karakter</button>
-    <button class="av-tab" onclick="avTab('adventurer-neutral',this)">Portre</button>
-    <button class="av-tab" onclick="avTab('bottts',this)">Robot</button>
-    <button class="av-tab" onclick="avTab('fun-emoji',this)">Emoji</button>
+    <button class="av-tab active" onclick="avTab('fun-emoji',this)">😄 Emoji</button>
+    <button class="av-tab" onclick="avTab('bottts',this)">🤖 Robot</button>
+    <button class="av-tab" onclick="avTab('pixel-art',this)">🎮 Piksel</button>
+    <button class="av-tab" onclick="avTab('adventurer',this)">🧙 Kahraman</button>
+    <button class="av-tab" onclick="avTab('lorelei',this)">🧑 Karakter</button>
+    <button class="av-tab" onclick="avTab('croodles',this)">✏️ Çizgi</button>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:480px">
     <span style="font-size:.8rem;color:rgba(255,255,255,.4)">Bir karakter seç</span>
@@ -437,24 +440,58 @@ function sfxReveal()   { [400,500,600,700].forEach((f,i)=>playNote(f,'sine',.1,.
 function sfxFanfare()  { [523,659,784,1047].forEach((f,i)=>playNote(f,'sine',.22,.3,sfxGain,i*.13)); }
 function sfxCountdown(){ playNote(880,'sine',.05,.2,sfxGain); }
 
-// Ambient background music — subtle, not arcade-like
+// Upbeat background music
 function startBgMusic(style = 'lobby') {
   stopBgMusic();
   if (!musicOn) return;
   currentMusicStyle = style;
-  const bpm = style === 'question' ? 100 : 72;
+  const bpm = style === 'question' ? 145 : 122;
   const beat = 60 / bpm;
-  // Gentle chord progression
-  const chords = style === 'question'
-    ? [[293,440,587],[261,392,523],[246,369,493],[261,392,523]]
-    : [[261,329,392,523],[220,293,369,440],[246,329,392,493],[261,329,415,523]];
+  // Energetic melody patterns
+  const melodies = {
+    lobby:    [523,659,784,880,784,659,523,440,523,659,523,392,440,523,659,523],
+    question: [784,880,988,1047,988,880,784,659,784,880,784,659,698,784,880,784]
+  };
+  const mel = melodies[style] || melodies.lobby;
   let step = 0;
   function tick() {
     if (!musicOn) return;
-    const ch = chords[step % chords.length];
-    ch.forEach((f, i) => playNote(f, 'sine', beat * 1.6, 0.04, musicGain, i * 0.015));
-    // Subtle bass note
-    playNote(ch[0] / 2, 'sine', beat * 1.8, 0.05, musicGain, 0);
+    const now = AC.currentTime;
+    const freq = mel[step % mel.length];
+    // Lead melody
+    playNote(freq, 'square', beat * 0.55, 0.028, musicGain);
+    // Harmony (third up)
+    playNote(freq * 1.26, 'triangle', beat * 0.45, 0.016, musicGain);
+    // Bass on every beat
+    playNote(freq / 2, 'sine', beat * 0.9, 0.055, musicGain);
+    // Kick drum (beats 0, 2)
+    if (step % 4 === 0 || step % 4 === 2) {
+      const ko = AC.createOscillator(), kg = AC.createGain();
+      ko.connect(kg); kg.connect(musicGain);
+      ko.type = 'sine';
+      ko.frequency.setValueAtTime(120, now);
+      ko.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+      kg.gain.setValueAtTime(0.22, now);
+      kg.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      ko.start(now); ko.stop(now + 0.2);
+    }
+    // Hi-hat (every beat)
+    const hg = AC.createGain(), hf = AC.createOscillator();
+    hf.connect(hg); hg.connect(musicGain);
+    hf.type = 'square'; hf.frequency.value = 6000 + Math.random() * 3000;
+    hg.gain.setValueAtTime(0.012, now);
+    hg.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    hf.start(now); hf.stop(now + 0.05);
+    // Snare on beats 1 and 3
+    if (step % 4 === 1 || step % 4 === 3) {
+      const sg = AC.createGain(), buf = AC.createBuffer(1, AC.sampleRate * 0.12, AC.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let x = 0; x < data.length; x++) data[x] = (Math.random() * 2 - 1) * Math.pow(1 - x / data.length, 1.2);
+      const sn = AC.createBufferSource();
+      sn.buffer = buf; sn.connect(sg); sg.connect(musicGain);
+      sg.gain.setValueAtTime(0.09, now); sg.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      sn.start(now);
+    }
     step++;
     bgMusicTimer = setTimeout(tick, beat * 1000);
   }
@@ -469,15 +506,26 @@ function toggleMusic() {
 }
 
 // ══════════════════════ AVATAR ENGINE ══════════════════════
-let myAvatar = { style: 'adventurer', seed: 'AssisTT' };
-let avCurrentStyle = 'adventurer';
+let myAvatar = { style: 'fun-emoji', seed: 'AssisTT' };
+let avCurrentStyle = 'fun-emoji';
+
+const AV_STYLES = [
+  { key:'fun-emoji',   label:'😄 Emoji',   bg:'ffdfbf,ffd5dc,c0aede,b6e3f4' },
+  { key:'bottts',      label:'🤖 Robot',    bg:'b6e3f4,c0aede,d1d4f9,bde0fe' },
+  { key:'pixel-art',   label:'🎮 Piksel',   bg:'ffd5dc,ffdfbf,b6e3f4,d1d4f9' },
+  { key:'adventurer',  label:'🧙 Kahraman', bg:'b6e3f4,c0aede,d1d4f9,ffdfbf' },
+  { key:'lorelei',     label:'🧑 Karakter', bg:'ffd5dc,ffdfbf,b6e3f4,c0aede' },
+  { key:'croodles',    label:'✏️ Çizgi',    bg:'fff3bf,b6e3f4,ffd5dc,d1d4f9' },
+];
 
 function buildAvatarSVG(av, size = 100) {
-  const url = `https://api.dicebear.com/7.x/${av.style}/svg?seed=${encodeURIComponent(av.seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
+  const s = AV_STYLES.find(x => x.key === av.style) || AV_STYLES[0];
+  const url = `https://api.dicebear.com/7.x/${av.style}/svg?seed=${encodeURIComponent(av.seed)}&backgroundColor=${s.bg}`;
   return `<image href="${url}" width="${size}" height="${size}"/>`;
 }
 function buildAvatarImg(av, size = 40) {
-  const url = `https://api.dicebear.com/7.x/${av.style}/svg?seed=${encodeURIComponent(av.seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
+  const s = AV_STYLES.find(x => x.key === av.style) || AV_STYLES[0];
+  const url = `https://api.dicebear.com/7.x/${av.style}/svg?seed=${encodeURIComponent(av.seed)}&backgroundColor=${s.bg}`;
   return `<img src="${url}" width="${size}" height="${size}" style="border-radius:50%;display:block;object-fit:cover">`;
 }
 
@@ -488,13 +536,14 @@ function avTab(style, el) {
   genAvGrid();
 }
 function genAvGrid() {
-  const seeds = Array.from({ length: 8 }, () => Math.random().toString(36).substring(2, 8));
+  const count = 12;
+  const seeds = Array.from({ length: count }, () => Math.random().toString(36).substring(2, 9));
   const grid = document.getElementById('av-grid');
-  grid.innerHTML = seeds.map((seed, idx) => {
-    const av = { style: avCurrentStyle, seed };
-    const url = `https://api.dicebear.com/7.x/${av.style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
+  const s = AV_STYLES.find(x => x.key === avCurrentStyle) || AV_STYLES[0];
+  grid.innerHTML = seeds.map((seed) => {
+    const url = `https://api.dicebear.com/7.x/${avCurrentStyle}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${s.bg}`;
     return `<div class="av-itm" onclick="selAv('${avCurrentStyle}','${seed}',this)">
-      <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" loading="lazy">
     </div>`;
   }).join('');
   selAv(avCurrentStyle, seeds[0], grid.firstElementChild);
@@ -576,13 +625,31 @@ function saveQ() { localStorage.setItem('ql_q', JSON.stringify(questions)); }
 function clearInts() { clearInterval(timerInt); timerInt=null; }
 
 // ══════════════════════ ADMIN ══════════════════════
-function showAdminLogin() { show('admin-login'); setTimeout(()=>document.getElementById('admin-pw').focus(), 100); }
-function adminLogin() {
-  if (document.getElementById('admin-pw').value === ADMIN_PW) { document.getElementById('admin-pw').value=''; showAdmin(); }
-  else { const e=document.getElementById('admin-err');e.style.display='block';setTimeout(()=>e.style.display='none',2500); }
+function showAdminLogin() { show('admin-login'); setTimeout(()=>document.getElementById('login-sicil')?.focus(), 100); }
+function showAdmin() {
+  clearInts(); stopConfetti(); stopBgMusic(); isHost = false;
+  // Update header labels
+  const roleLabels = { admin:'Süper Yönetici', manager:'Tam Yetki', full:'Editör', limited:'Sınırlı' };
+  const userLabelEl = document.getElementById('admin-user-label');
+  const roleLabelEl = document.getElementById('admin-role-label');
+  if (userLabelEl) userLabelEl.textContent = currentAdSoyad || currentSicil || '';
+  if (roleLabelEl) roleLabelEl.textContent = roleLabels[currentRole] || 'Yönetici Paneli';
+  // User management: admin only
+  const userMgmt = document.getElementById('user-mgmt-section');
+  if (userMgmt) userMgmt.style.display = currentRole === 'admin' ? '' : 'none';
+  // Add/delete question controls: full, manager, admin
+  const canEdit = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
+  ['btn-add-q','btn-excel','btn-clear-q','btn-save-lib'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = canEdit ? '' : 'none';
+  });
+  show('admin');
+  renderQL();
+  renderLibrary();
+  if (currentRole === 'admin') renderUsers();
+  if (questions.length > 0 && selQIdx < 0) { selQIdx = 0; renderE(0); }
+  else if (selQIdx >= 0 && selQIdx < questions.length) renderE(selQIdx);
 }
-function changePw() { const np=document.getElementById('admin-pw-c').value.trim();if(!np){toast('Şifre boş olamaz!');return;}ADMIN_PW=np;localStorage.setItem('ql_pw',np);document.getElementById('admin-pw-c').value='';toast('Şifre güncellendi ✓'); }
-function showAdmin() { clearInts();stopConfetti();stopBgMusic();isHost=false;show('admin');renderQL();renderLibrary();if(questions.length>0&&selQIdx<0){selQIdx=0;renderE(0);} else if(selQIdx>=0&&selQIdx<questions.length)renderE(selQIdx); }
 function clearAllQ() { if(!confirm(`${questions.length} sorunun tamamını silmek istediğinizden emin misiniz?`))return;questions=[];selQIdx=-1;saveQ();renderQL();document.getElementById('editor').innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);margin-top:5rem;font-size:1.1rem">Düzenlemek için sol taraftan bir soru seçin.</div>';toast('Tüm sorular silindi'); }
 
 function renderQL() {
@@ -641,15 +708,16 @@ function addQ(){questions.push({text:'',time:20,pts:'standard',answers:[{text:''
 function delQ(e,i){if(e)e.stopPropagation();if(!confirm('Bu soruyu silmek istiyor musunuz?'))return;questions.splice(i,1);saveQ();selQIdx=Math.max(-1,Math.min(selQIdx,questions.length-1));renderQL();if(selQIdx>=0)renderE(selQIdx);else document.getElementById('editor').innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);margin-top:5rem">Soru seçin veya ekleyin.</div>';}
 function moveQ(i,d){const j=i+d;if(j<0||j>=questions.length)return;[questions[i],questions[j]]=[questions[j],questions[i]];saveQ();selQIdx=j;renderQL();renderE(j);}
 
-// ══════════════════════ QUIZ LIBRARY ══════════════════════
-function saveToLibrary() {
+// ══════════════════════ QUIZ LIBRARY (DB-backed) ══════════════════════
+async function saveToLibrary() {
   if (!questions.length) { toast('Kaydedilecek soru yok!'); return; }
   const name = prompt('Sınav seti için bir isim girin:', `Sınav ${quizLibrary.length + 1}`);
   if (!name) return;
-  quizLibrary.push({ name: name.trim(), questions: JSON.parse(JSON.stringify(questions)), savedAt: Date.now() });
-  localStorage.setItem('ql_lib', JSON.stringify(quizLibrary));
-  renderLibrary();
-  toast(`"${name}" kütüphaneye kaydedildi ✓`);
+  try {
+    await apiCall('/question-sets', 'POST', { name: name.trim(), questions });
+    await renderLibrary();
+    toast(`"${name}" veritabanına kaydedildi ✓`);
+  } catch(e) { toast('Kayıt başarısız: ' + e.message); }
 }
 function loadLibrary(idx) {
   const set = quizLibrary[idx];
@@ -660,22 +728,104 @@ function loadLibrary(idx) {
   if (selQIdx >= 0) renderE(selQIdx);
   toast(`"${set.name}" yüklendi ✓`);
 }
-function deleteLibrary(idx) {
+async function deleteLibrary(idx) {
   const set = quizLibrary[idx];
+  if (!set) return;
   if (!confirm(`"${set.name}" kütüphaneden silinsin mi?`)) return;
-  quizLibrary.splice(idx, 1);
-  localStorage.setItem('ql_lib', JSON.stringify(quizLibrary));
-  renderLibrary();
-  toast('Set silindi');
+  try {
+    await apiCall('/question-sets/' + set.id, 'DELETE');
+    await renderLibrary();
+    toast('Set silindi');
+  } catch(e) { toast('Silinemedi: ' + e.message); }
 }
-function renderLibrary() {
+async function renderLibrary() {
   const el = document.getElementById('lib-list');
-  if (!quizLibrary.length) { el.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:.8rem;padding:.4rem">Henüz kaydedilen set yok</div>';return; }
-  el.innerHTML = quizLibrary.map((s,i)=>`<div class="lib-item">
-    <span class="lib-name" title="${s.name}">${s.name} <span style="color:rgba(255,255,255,.35)">(${s.questions.length} soru)</span></span>
-    <button class="btn btn-sm btn-primary" style="padding:.3rem .7rem;font-size:.75rem" onclick="loadLibrary(${i})">Yükle</button>
-    <button class="btn btn-sm btn-danger" style="padding:.3rem .6rem;font-size:.75rem" onclick="deleteLibrary(${i})">✕</button>
-  </div>`).join('');
+  if (!el) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.75rem;padding:.4rem">Yükleniyor...</div>';
+  try {
+    quizLibrary = await apiCall('/question-sets');
+    if (!quizLibrary.length) { el.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:.8rem;padding:.4rem">Henüz kaydedilen set yok</div>';return; }
+    const canDelete = currentRole === 'admin' || currentRole === 'manager';
+    el.innerHTML = quizLibrary.map((s,i)=>`<div class="lib-item">
+      <span class="lib-name" title="${escHtml(s.name)}">${escHtml(s.name)} <span style="color:rgba(255,255,255,.35)">(${(s.questions||[]).length} soru)</span></span>
+      <button class="btn btn-sm btn-primary" style="padding:.3rem .7rem;font-size:.75rem" onclick="loadLibrary(${i})">Yükle</button>
+      ${canDelete ? `<button class="btn btn-sm btn-danger" style="padding:.3rem .6rem;font-size:.75rem" onclick="deleteLibrary(${i})">✕</button>` : ''}
+    </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--bad);font-size:.8rem;padding:.4rem">Yüklenemedi</div>'; }
+}
+
+// ══════════════════════ USER MANAGEMENT (Admin only) ══════════════════════
+async function renderUsers() {
+  const el = document.getElementById('user-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.75rem;padding:.4rem">Yükleniyor...</div>';
+  try {
+    const users = await apiCall('/users');
+    if (!users.length) { el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.8rem;padding:.4rem">Henüz kullanıcı yok</div>'; return; }
+    const yLabels = { full:'Editör', limited:'Oyuncu', manager:'Tam Yetki' };
+    el.innerHTML = users.map(u => `<div class="lib-item">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(u.adSoyad)}</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.4)">${escHtml(u.sicil)} · ${yLabels[u.yetki]||u.yetki}</div>
+      </div>
+      <button class="btn btn-sm btn-danger" style="padding:.28rem .55rem;font-size:.72rem;flex-shrink:0" onclick="removeUser('${u.sicil}','${escHtml(u.adSoyad)}')">✕</button>
+    </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--bad);font-size:.8rem">Yüklenemedi</div>'; }
+}
+async function addUser() {
+  const sicil = (document.getElementById('new-sicil').value || '').trim().toUpperCase();
+  const adSoyad = (document.getElementById('new-adsoyad').value || '').trim();
+  const yetki = document.getElementById('new-yetki').value || 'limited';
+  if (!sicil || !adSoyad) { toast('Sicil ve ad soyad zorunludur!'); return; }
+  try {
+    await apiCall('/users', 'POST', { sicil, adSoyad, yetki });
+    document.getElementById('new-sicil').value = '';
+    document.getElementById('new-adsoyad').value = '';
+    await renderUsers();
+    toast(`${adSoyad} eklendi ✓`);
+  } catch(e) { toast('Eklenemedi: ' + e.message); }
+}
+async function removeUser(sicil, name) {
+  if (!confirm(`"${name}" (${sicil}) silinsin mi?`)) return;
+  try {
+    await apiCall('/users/' + sicil, 'DELETE');
+    await renderUsers();
+    toast('Kullanıcı silindi');
+  } catch(e) { toast('Silinemedi: ' + e.message); }
+}
+
+// ══════════════════════ LIMITED USER PANEL ══════════════════════
+async function showLimitedPanel() {
+  clearInts(); stopConfetti(); stopBgMusic(); isHost = false;
+  const el = document.getElementById('limited-adsoyad');
+  if (el) el.textContent = (currentAdSoyad || currentSicil || '') + ' · Hoş geldiniz!';
+  show('limited');
+  await renderLimitedSets();
+}
+async function renderLimitedSets() {
+  const sel = document.getElementById('limited-sets');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Yükleniyor... --</option>';
+  try {
+    const sets = await apiCall('/question-sets');
+    sel.innerHTML = '<option value="">-- Soru seti seçin --</option>';
+    sets.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = `${s.name} (${(s.questions||[]).length} soru)`;
+      opt.dataset.questions = JSON.stringify(s.questions || []);
+      sel.appendChild(opt);
+    });
+  } catch(e) { sel.innerHTML = '<option value="">Yüklenemedi</option>'; toast('Soru setleri alınamadı: ' + e.message); }
+}
+function startLimitedLobby() {
+  const sel = document.getElementById('limited-sets');
+  const idx = sel.selectedIndex;
+  if (idx <= 0) { toast('Lütfen bir soru seti seçin!'); return; }
+  const opt = sel.options[idx];
+  questions = JSON.parse(opt.dataset.questions || '[]');
+  if (!questions.length) { toast('Bu set boş!'); return; }
+  saveQ(); startLobby();
 }
 
 // ══════════════════════ HOST: LOBBY ══════════════════════
@@ -752,9 +902,11 @@ function showHostQuestion(qi) {
   document.getElementById('pts-lbl').textContent = q.pts === 'double' ? '⚡ Çift Puan' : q.pts === 'none' ? '🎯 Puansız' : '⭐ Standart';
 
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
-  document.getElementById('qans-host').innerHTML = q.answers.map((a,i)=>
-    `<div class="abtn ${cls[i]}" id="ha-${i}"><div class="ashape">${shapes[i]}</div><span style="flex:1;text-align:left">${escHtml(a.text)}</span><div class="hbar" id="hbar-${i}" style="width:0"></div></div>`
-  ).join('');
+  lastAnswerCounts = {};
+  document.getElementById('qans-host').innerHTML = q.answers.map((a,i)=> {
+    if (!a.text || !a.text.trim()) return '';
+    return `<div class="abtn ${cls[i]}" id="ha-${i}"><div class="ashape">${shapes[i]}</div><span style="flex:1;text-align:left">${escHtml(normAnswerText(a.text))}</span><div class="hbar" id="hbar-${i}" style="width:0"></div></div>`;
+  }).join('');
 
   clearInts();
   timerInt = setInterval(() => {
@@ -768,16 +920,12 @@ function showHostQuestion(qi) {
   }, 1000);
 }
 
+let lastAnswerCounts = {};
 socket.on('player-answered', data => {
   document.getElementById('ans-cnt').textContent = data.answeredCount;
   document.getElementById('tot-pl').textContent = data.totalPlayers;
-  const total = data.totalPlayers;
-  const counts = data.answerCounts || {};
-  for (let j = 0; j < 4; j++) {
-    const cnt = counts[j] || 0;
-    const bar = document.getElementById('hbar-' + j);
-    if (bar) bar.style.width = total ? Math.round(cnt / total * 80 + 5) + '%' : '0';
-  }
+  lastAnswerCounts = { counts: data.answerCounts || {}, total: data.totalPlayers };
+  // Bars hidden during question — only show after reveal to prevent cheating
 });
 socket.on('all-answered', () => {
   document.getElementById('all-banner').style.display = 'block';
@@ -796,9 +944,14 @@ socket.on('answer-revealed', data => {
   const q = questions[qIdx];
 
   if (isHost && q) {
+    const total = lastAnswerCounts.total || 1;
+    const counts = lastAnswerCounts.counts || {};
     q.answers.forEach((a, i) => {
       const el = document.getElementById('ha-' + i);
       if (el) el.classList.add('revealed', correctIndexes.includes(i) ? 'correct' : 'wrong');
+      // Now safe to show bars — question is over
+      const bar = document.getElementById('hbar-' + i);
+      if (bar) bar.style.width = total ? Math.round((counts[i]||0) / total * 80 + 5) + '%' : '0';
     });
     document.getElementById('reveal-btn').style.display = 'none';
     document.getElementById('next-btn').style.display = 'block';
@@ -902,9 +1055,10 @@ function showPlayerQuestion(qi, q) {
   document.getElementById('pfeedback').innerHTML = '';
 
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
-  document.getElementById('paans').innerHTML = (q.answers||[]).map((a,i) =>
-    `<button class="pabtn ${cls[i]}" id="pb-${i}" onclick="submitAns(${i},${qi})"><span class="sym">${shapes[i]}</span>${escHtml(a.text)}</button>`
-  ).join('');
+  document.getElementById('paans').innerHTML = (q.answers||[]).map((a,i) => {
+    if (!a.text || !a.text.trim()) return '';
+    return `<button class="pabtn ${cls[i]}" id="pb-${i}" onclick="submitAns(${i},${qi})"><span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(a.text))}</button>`;
+  }).join('');
 
   clearInts();
   timerInt = setInterval(() => {
@@ -946,11 +1100,11 @@ function showPlayerReveal(qi, correctIndexes, playerScores) {
   const q = curQuestion;
   const shapes = ['▲','●','■','♦'], cls = ['aa','ab','ac','ad'];
   document.getElementById('paans').innerHTML = (q && q.answers ? q.answers : []).map((a,i) => {
+    if (!a.text || !a.text.trim()) return '';
     const isRight = correctIndexes.includes(i);
     const opacity = isRight ? 1 : 0.2;
-    const border = isRight ? '2.5px solid #27ae60' : 'none';
-    return `<button class="pabtn ${cls[i]}" disabled style="opacity:${opacity};${border?'box-shadow:0 0 0 2.5px #27ae60;':''}">
-      <span class="sym">${shapes[i]}</span>${escHtml(a.text)}
+    return `<button class="pabtn ${cls[i]}" disabled style="opacity:${opacity};${isRight?'box-shadow:0 0 0 2.5px #27ae60;':''}">
+      <span class="sym">${shapes[i]}</span>${escHtml(normAnswerText(a.text))}
     </button>`;
   }).join('');
 
@@ -1029,11 +1183,30 @@ async function handleExcelUpload(event) {
   event.target.value='';
 }
 
+// ══════════════════════ ANSWER TEXT NORMALIZER ══════════════════════
+function normAnswerText(text) {
+  const t = (text || '').trim().toLowerCase();
+  if (t === 'true' || t === 'doğru' || t === 'dogru') return 'Doğru';
+  if (t === 'false' || t === 'yanlış' || t === 'yanlis') return 'Yanlış';
+  return text;
+}
+
 // ══════════════════════ INIT ══════════════════════
-window.addEventListener('load', () => {
-  renderQL(); renderLibrary();
+window.addEventListener('load', async () => {
+  renderQL();
   const joinPin = new URLSearchParams(location.search).get('join');
-  if (joinPin) { show('join'); document.getElementById('join-pin').value = joinPin; }
+  if (joinPin) { show('join'); document.getElementById('join-pin').value = joinPin; return; }
+  // Auto-restore session if already logged in
+  if (authToken && currentRole) {
+    try {
+      // Verify token is still valid by fetching question sets
+      await apiCall('/question-sets');
+      await afterLogin();
+    } catch(e) {
+      // Token expired/invalid — clear and show landing
+      logout();
+    }
+  }
 });
 </script>
 </body>
