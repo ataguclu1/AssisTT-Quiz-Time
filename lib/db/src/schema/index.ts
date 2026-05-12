@@ -7,6 +7,7 @@ export const authorizedUsersTable = pgTable("authorized_users", {
   sicil: varchar("sicil", { length: 50 }).notNull().unique(),
   adSoyad: varchar("ad_soyad", { length: 255 }).notNull(),
   yetki: varchar("yetki", { length: 20 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

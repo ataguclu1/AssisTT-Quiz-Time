@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "assistt-quiz-secret-2024";
 export interface AuthPayload {
   sicil: string;
   adSoyad: string;
-  role: "admin" | "full" | "limited";
+  role: "admin" | "full" | "limited" | "manager";
 }
 
 export function signToken(payload: AuthPayload): string {

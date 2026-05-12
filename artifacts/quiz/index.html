@@ -195,10 +195,10 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
     <div style="font-size:1.4rem;font-weight:800;color:var(--tt-cyan)">Sistem Girişi</div>
     <div>
       <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">SİCİL NUMARASI</label>
-      <input class="inp" type="text" id="login-sicil" placeholder="Örn: A053252" maxlength="20" oninput="this.value=this.value.toUpperCase();document.getElementById('login-pw-wrap').style.display=(this.value==='A053252'?'':'none')" onkeydown="if(event.key==='Enter')siciLogin()">
+      <input class="inp" type="text" id="login-sicil" placeholder="Örn: A053252" maxlength="20" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')siciLogin()">
     </div>
-    <div id="login-pw-wrap" style="display:none">
-      <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">ŞİFRE (YÖNETİCİ)</label>
+    <div id="login-pw-wrap">
+      <label style="font-size:.72rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">ŞİFRE</label>
       <input class="inp" type="password" id="login-pw" placeholder="Şifrenizi girin..." onkeydown="if(event.key==='Enter')siciLogin()">
     </div>
     <button class="btn btn-primary" style="width:100%" onclick="siciLogin()">Giriş Yap →</button>
@@ -218,7 +218,23 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
       <select class="inp" id="limited-sets" style="background:rgba(255,255,255,.07);color:#fff;cursor:pointer"></select>
     </div>
     <button class="btn btn-success" onclick="startLimitedLobby()" style="width:100%;font-size:1.05rem;padding:1rem">▶ Lobiyi Başlat</button>
+    <button class="btn btn-outline btn-sm" onclick="showChangePw()" style="width:100%">🔑 Şifremi Değiştir</button>
     <button class="btn btn-outline btn-sm" onclick="logout()" style="width:100%">🚪 Çıkış Yap</button>
+  </div>
+</div>
+
+<!-- ═══ CHANGE PASSWORD MODAL ═══ -->
+<div id="modal-changepw" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div class="card" style="max-width:380px;gap:1rem">
+    <div style="font-size:1.1rem;font-weight:800;color:var(--tt-cyan)">🔑 Şifre Değiştir</div>
+    <div class="fg" style="margin:0"><label>Mevcut Şifre</label><input class="inp" type="password" id="cpw-old" placeholder="Mevcut şifreniz" onkeydown="if(event.key==='Enter')doChangePw()"></div>
+    <div class="fg" style="margin:0"><label>Yeni Şifre</label><input class="inp" type="password" id="cpw-new" placeholder="Yeni şifre (en az 4 karakter)" onkeydown="if(event.key==='Enter')doChangePw()"></div>
+    <div class="fg" style="margin:0"><label>Yeni Şifre (Tekrar)</label><input class="inp" type="password" id="cpw-new2" placeholder="Yeni şifreyi tekrar girin" onkeydown="if(event.key==='Enter')doChangePw()"></div>
+    <div id="cpw-err" style="color:var(--bad);font-size:.85rem;display:none"></div>
+    <div style="display:flex;gap:.8rem">
+      <button class="btn btn-primary" style="flex:1" onclick="doChangePw()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeChangePw()">İptal</button>
+    </div>
   </div>
 </div>
 
@@ -228,6 +244,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/AssisTT_logo.svg/960px-AssisTT_logo.svg.png" alt="AssisTT" style="height:28px">
     <span style="font-size:1.1rem;font-weight:800;flex:1">Quiz <span style="color:var(--tt-cyan)">Time</span> <span style="font-size:.8rem;color:rgba(255,255,255,.4);font-weight:600" id="admin-role-label">Yönetici Paneli</span></span>
     <span style="font-size:.8rem;color:rgba(255,255,255,.6);margin-right:.5rem" id="admin-user-label"></span>
+    <button class="btn btn-sm btn-outline" id="btn-changepw-hdr" onclick="showChangePw()" style="display:none">🔑 Şifre</button>
     <button class="btn btn-sm btn-outline" onclick="logout()">Çıkış</button>
     <button class="btn btn-sm btn-success" onclick="startLobby()">▶ Lobiyi Başlat</button>
   </div>
@@ -254,6 +271,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
         <div class="lib-list" id="user-list" style="max-height:120px"></div>
         <div class="fg" style="margin:.4rem 0 0"><label>Sicil No</label><input type="text" id="new-sicil" placeholder="Örn: B012345" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
         <div class="fg" style="margin:.4rem 0 0"><label>Ad Soyad</label><input type="text" id="new-adsoyad" placeholder="Ad Soyad"></div>
+        <div class="fg" style="margin:.4rem 0 0"><label>Şifre</label><input type="password" id="new-pw" placeholder="Giriş şifresi (en az 4 karakter)"></div>
         <div class="fg" style="margin:.4rem 0 0"><label>Yetki</label>
           <select id="new-yetki">
             <option value="manager">Tam Yetki (Ekle + Sil + Yayınla)</option>
@@ -287,7 +305,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
   </div>
   <div class="btn-group">
     <button class="btn btn-success" onclick="startGame()" style="font-size:1.1rem;padding:1rem 3rem">🚀 OYUNU BAŞLAT</button>
-    <button class="btn btn-outline" onclick="showAdmin()">İptal</button>
+    <button class="btn btn-outline" onclick="backToPanel()">İptal</button>
   </div>
 </div>
 
@@ -364,7 +382,7 @@ body{font-family:'Montserrat',sans-serif;background:var(--tt-bg);color:#fff;min-
     </div>
   </div>
   <div class="qftr">
-    <button class="btn btn-sm btn-outline" onclick="showAdmin()">Durdur</button>
+    <button class="btn btn-sm btn-outline" onclick="backToPanel()">Durdur</button>
     <button class="btn btn-primary" id="reveal-btn" onclick="revealAnswer()" style="padding:.9rem 2.5rem">Yanıtı Göster</button>
     <button class="btn btn-success" id="next-btn" onclick="goNextOrLB()" style="display:none;padding:.9rem 2.5rem">Devam Et →</button>
   </div>
@@ -582,7 +600,7 @@ async function siciLogin() {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sicil, password: sicil === ADMIN_SICIL_KEY ? pw : undefined })
+      body: JSON.stringify({ sicil, password: pw })
     });
     const data = await res.json();
     if (!res.ok) { if(err){err.textContent=data.error||'Giriş başarısız.';err.style.display='block';} return; }
@@ -590,7 +608,6 @@ async function siciLogin() {
     localStorage.setItem('auth_token', authToken); localStorage.setItem('auth_role', currentRole);
     localStorage.setItem('auth_sicil', currentSicil); localStorage.setItem('auth_adsoyad', currentAdSoyad);
     document.getElementById('login-pw').value = ''; document.getElementById('login-sicil').value = '';
-    document.getElementById('login-pw-wrap').style.display = 'none';
     afterLogin();
   } catch(e) { if(err){err.textContent=e.message||'Bağlantı hatası.';err.style.display='block';} }
 }
@@ -637,6 +654,9 @@ function showAdmin() {
   // User management: admin only
   const userMgmt = document.getElementById('user-mgmt-section');
   if (userMgmt) userMgmt.style.display = currentRole === 'admin' ? '' : 'none';
+  // Change password button: for non-admin users only
+  const cpwBtn = document.getElementById('btn-changepw-hdr');
+  if (cpwBtn) cpwBtn.style.display = currentRole !== 'admin' ? '' : 'none';
   // Add/delete question controls: full, manager, admin
   const canEdit = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
   ['btn-add-q','btn-excel','btn-clear-q','btn-save-lib'].forEach(id => {
@@ -655,11 +675,12 @@ function clearAllQ() { if(!confirm(`${questions.length} sorunun tamamını silme
 function renderQL() {
   document.getElementById('q-count').textContent = questions.length;
   const ul = document.getElementById('q-list');
+  const canEdit = currentRole === 'admin' || currentRole === 'manager' || currentRole === 'full';
   if (!questions.length) { ul.innerHTML='<div style="color:rgba(255,255,255,.3);padding:.8rem;font-size:.85rem">Henüz soru yok</div>';return; }
   ul.innerHTML = questions.map((q,i)=>`<li class="qi ${i===selQIdx?'active':''}" onclick="selQ(${i})">
     <div class="qnum">${i+1}</div>
     <div class="qtx">${q.text||'(Boş)'}</div>
-    <span onclick="delQ(event,${i})" style="color:var(--bad);cursor:pointer;padding:4px;font-weight:900;font-size:1rem" title="Sil">✕</span>
+    ${canEdit ? `<span onclick="delQ(event,${i})" style="color:var(--bad);cursor:pointer;padding:4px;font-weight:900;font-size:1rem" title="Sil">✕</span>` : ''}
   </li>`).join('');
 }
 function selQ(i) { selQIdx=i;renderQL();renderE(i); }
@@ -705,7 +726,13 @@ function saveQ2(i){
   questions[i]={text,time,pts,answers};saveQ();renderQL();toast('Soru kaydedildi ✓');
 }
 function addQ(){questions.push({text:'',time:20,pts:'standard',answers:[{text:'',correct:false},{text:'',correct:false},{text:'',correct:false},{text:'',correct:false}]});saveQ();selQIdx=questions.length-1;renderQL();renderE(selQIdx);}
-function delQ(e,i){if(e)e.stopPropagation();if(!confirm('Bu soruyu silmek istiyor musunuz?'))return;questions.splice(i,1);saveQ();selQIdx=Math.max(-1,Math.min(selQIdx,questions.length-1));renderQL();if(selQIdx>=0)renderE(selQIdx);else document.getElementById('editor').innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);margin-top:5rem">Soru seçin veya ekleyin.</div>';}
+function delQ(e,i){
+  if(e)e.stopPropagation();
+  const canEdit = currentRole==='admin'||currentRole==='manager'||currentRole==='full';
+  if(!canEdit){toast('Bu işlem için yetkiniz yok!');return;}
+  if(!confirm('Bu soruyu silmek istiyor musunuz?'))return;
+  questions.splice(i,1);saveQ();selQIdx=Math.max(-1,Math.min(selQIdx,questions.length-1));renderQL();if(selQIdx>=0)renderE(selQIdx);else document.getElementById('editor').innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);margin-top:5rem">Soru seçin veya ekleyin.</div>';
+}
 function moveQ(i,d){const j=i+d;if(j<0||j>=questions.length)return;[questions[i],questions[j]]=[questions[j],questions[i]];saveQ();selQIdx=j;renderQL();renderE(j);}
 
 // ══════════════════════ QUIZ LIBRARY (DB-backed) ══════════════════════
@@ -763,27 +790,41 @@ async function renderUsers() {
     const users = await apiCall('/users');
     if (!users.length) { el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.8rem;padding:.4rem">Henüz kullanıcı yok</div>'; return; }
     const yLabels = { full:'Editör', limited:'Oyuncu', manager:'Tam Yetki' };
-    el.innerHTML = users.map(u => `<div class="lib-item">
+    el.innerHTML = users.map(u => `<div class="lib-item" style="flex-wrap:wrap;gap:.3rem">
       <div style="flex:1;min-width:0">
         <div style="font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(u.adSoyad)}</div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.4)">${escHtml(u.sicil)} · ${yLabels[u.yetki]||u.yetki}</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.4)">${escHtml(u.sicil)} · ${yLabels[u.yetki]||u.yetki} ${u.hasPassword?'🔑':' ⚠️ Şifresiz'}</div>
       </div>
-      <button class="btn btn-sm btn-danger" style="padding:.28rem .55rem;font-size:.72rem;flex-shrink:0" onclick="removeUser('${u.sicil}','${escHtml(u.adSoyad)}')">✕</button>
+      <button class="btn btn-sm" style="padding:.28rem .5rem;font-size:.68rem;background:rgba(255,255,255,.1);border:1px solid var(--border);color:#fff;flex-shrink:0" onclick="adminResetPw('${u.sicil}','${escHtml(u.adSoyad)}')">Şifre</button>
+      <button class="btn btn-sm btn-danger" style="padding:.28rem .45rem;font-size:.72rem;flex-shrink:0" onclick="removeUser('${u.sicil}','${escHtml(u.adSoyad)}')">✕</button>
     </div>`).join('');
   } catch(e) { el.innerHTML = '<div style="color:var(--bad);font-size:.8rem">Yüklenemedi</div>'; }
 }
 async function addUser() {
   const sicil = (document.getElementById('new-sicil').value || '').trim().toUpperCase();
   const adSoyad = (document.getElementById('new-adsoyad').value || '').trim();
+  const password = (document.getElementById('new-pw').value || '');
   const yetki = document.getElementById('new-yetki').value || 'limited';
   if (!sicil || !adSoyad) { toast('Sicil ve ad soyad zorunludur!'); return; }
+  if (!password || password.length < 4) { toast('Şifre en az 4 karakter olmalıdır!'); return; }
   try {
-    await apiCall('/users', 'POST', { sicil, adSoyad, yetki });
+    await apiCall('/users', 'POST', { sicil, adSoyad, yetki, password });
     document.getElementById('new-sicil').value = '';
     document.getElementById('new-adsoyad').value = '';
+    document.getElementById('new-pw').value = '';
     await renderUsers();
     toast(`${adSoyad} eklendi ✓`);
   } catch(e) { toast('Eklenemedi: ' + e.message); }
+}
+async function adminResetPw(sicil, name) {
+  const pw = prompt(`"${name}" (${sicil}) için yeni şifre girin (en az 4 karakter):`);
+  if (!pw) return;
+  if (pw.length < 4) { toast('Şifre en az 4 karakter olmalıdır!'); return; }
+  try {
+    await apiCall('/users/' + sicil + '/password', 'PATCH', { password: pw });
+    toast('Şifre güncellendi ✓');
+    await renderUsers();
+  } catch(e) { toast('Güncellenemedi: ' + e.message); }
 }
 async function removeUser(sicil, name) {
   if (!confirm(`"${name}" (${sicil}) silinsin mi?`)) return;
@@ -792,6 +833,45 @@ async function removeUser(sicil, name) {
     await renderUsers();
     toast('Kullanıcı silindi');
   } catch(e) { toast('Silinemedi: ' + e.message); }
+}
+
+function backToPanel() {
+  clearInts(); stopBgMusic(); stopConfetti(); isHost = false;
+  socket.emit('host-cancel', { pin: gamePin });
+  if (currentRole === 'limited') showLimitedPanel();
+  else showAdmin();
+}
+
+function showChangePw() {
+  const m = document.getElementById('modal-changepw');
+  if (!m) return;
+  document.getElementById('cpw-old').value = '';
+  document.getElementById('cpw-new').value = '';
+  document.getElementById('cpw-new2').value = '';
+  const errEl = document.getElementById('cpw-err');
+  if (errEl) errEl.style.display = 'none';
+  m.style.display = 'flex';
+  setTimeout(() => document.getElementById('cpw-old')?.focus(), 100);
+}
+function closeChangePw() {
+  const m = document.getElementById('modal-changepw');
+  if (m) m.style.display = 'none';
+}
+async function doChangePw() {
+  const old = document.getElementById('cpw-old').value;
+  const nw = document.getElementById('cpw-new').value;
+  const nw2 = document.getElementById('cpw-new2').value;
+  const errEl = document.getElementById('cpw-err');
+  const showErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  if (!old || !nw || !nw2) { showErr('Tüm alanları doldurun.'); return; }
+  if (nw.length < 4) { showErr('Yeni şifre en az 4 karakter olmalıdır.'); return; }
+  if (nw !== nw2) { showErr('Yeni şifreler eşleşmiyor.'); return; }
+  try {
+    await apiCall('/auth/change-password', 'POST', { oldPassword: old, newPassword: nw });
+    closeChangePw();
+    toast('Şifreniz güncellendi ✓');
+  } catch(e) { showErr(e.message || 'Şifre güncellenemedi.'); }
 }
 
 // ══════════════════════ LIMITED USER PANEL ══════════════════════
@@ -1164,15 +1244,58 @@ async function handleExcelUpload(event) {
         const data=new Uint8Array(e.target.result);
         const wb=XLSX.read(data,{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1});
-        const parsed=[];const headers=rows[0];
-        const idx={soruMetni:headers.indexOf('Soru Metni'),a:headers.indexOf('A'),b:headers.indexOf('B'),c:headers.indexOf('C'),d:headers.indexOf('D'),doğru1:headers.indexOf('Doğru Seçenek 1'),doğru2:headers.indexOf('Doğru Seçenek 2')};
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        const parsed=[];
+        const headers=(rows[0]||[]).map(h=>String(h||'').trim());
+        const fi=(names)=>{
+          for(const n of names){const i=headers.findIndex(h=>h.toLowerCase()===n.toLowerCase());if(i>=0)return i;}
+          return -1;
+        };
+        const iSoru = fi(['Soru Metni','Soru','Question','soru_metni']);
+        const iTip  = fi(['Soru Tipi','Tip','Type','soru_tipi']);
+        const iA    = fi(['A','Seçenek A','Seçenek 1','a']);
+        const iB    = fi(['B','Seçenek B','Seçenek 2','b']);
+        const iC    = fi(['C','Seçenek C','Seçenek 3','c']);
+        const iD    = fi(['D','Seçenek D','Seçenek 4','d']);
+        const iD1   = fi(['Doğru Seçenek 1','Doğru Seçenek','Cevap','dogru_secnek_1','dogru_secenk_1']);
+        const iD2   = fi(['Doğru Seçenek 2','dogru_secnek_2','dogru_secenk_2']);
+        if(iSoru<0){toast('⚠️ "Soru Metni" sütunu bulunamadı.');return;}
         for(let i=1;i<rows.length;i++){
-          const row=rows[i];if(!row[idx.soruMetni])continue;
-          const seçenekler=['a','b','c','d'].map(k=>row[idx[k]]||'').filter(Boolean);
-          const doğrular=[];
-          [idx.doğru1,idx.doğru2].forEach(di=>{if(di!==-1&&row[di]){const ci=['a','b','c','d'].indexOf(String(row[di]).toLowerCase().trim());if(ci>=0)doğrular.push(ci);}});
-          parsed.push({text:row[idx.soruMetni],time:20,pts:'standard',answers:seçenekler.map((txt,j)=>({text:txt,correct:doğrular.includes(j)}))});
+          const row=rows[i];
+          const soruMetni=String(row[iSoru]||'').trim();
+          if(!soruMetni)continue;
+          const tip=iTip>=0?String(row[iTip]||'').trim():'';
+          let seçenekler=[], doğrular=[];
+          if(tip==='2'||tip.toLowerCase()==='doğru/yanlış'||tip.toLowerCase()==='dogru/yanlis'){
+            // T/F question: always Doğru / Yanlış
+            const doğruCevap=iD1>=0?String(row[iD1]||'').trim().toLowerCase():'';
+            const isTrue=doğruCevap==='doğru'||doğruCevap==='dogru'||doğruCevap==='true'||doğruCevap==='1'||doğruCevap==='a';
+            seçenekler=['Doğru','Yanlış'];
+            doğrular=isTrue?[0]:[1];
+          } else {
+            // Multiple choice: read A B C D columns
+            const opTexts=[iA,iB,iC,iD].map(ci=>ci>=0?String(row[ci]||'').trim():'');
+            seçenekler=opTexts.filter(t=>t!=='');
+            const opMap=opTexts.map((t,j)=>({t,j})).filter(x=>x.t!=='');
+            [iD1,iD2].forEach(di=>{
+              if(di<0)return;
+              const v=String(row[di]||'').trim().toLowerCase();
+              if(!v)return;
+              // Try by letter (a/b/c/d)
+              const letterIdx=['a','b','c','d'].indexOf(v);
+              if(letterIdx>=0){
+                // Find position among non-empty answers
+                const mapped=opMap.findIndex(x=>x.j===letterIdx);
+                if(mapped>=0&&!doğrular.includes(mapped))doğrular.push(mapped);
+              } else {
+                // Try by matching text
+                const matchIdx=opMap.findIndex(x=>x.t.toLowerCase()===v||normAnswerText(x.t).toLowerCase()===v);
+                if(matchIdx>=0&&!doğrular.includes(matchIdx))doğrular.push(matchIdx);
+              }
+            });
+          }
+          if(!seçenekler.length){toast(`⚠️ ${i+1}. satırda şık bulunamadı, atlandı.`);continue;}
+          parsed.push({text:soruMetni,time:20,pts:'standard',answers:seçenekler.map((txt,j)=>({text:txt,correct:doğrular.includes(j)}))});
         }
         if(parsed.length){questions=[...questions,...parsed];saveQ();renderQL();if(selQIdx<0&&questions.length>0){selQIdx=0;renderE(0);}toast(`✅ ${parsed.length} soru yüklendi!`);}
         else toast('⚠️ Soru bulunamadı. Sütun başlıklarını kontrol edin.');
