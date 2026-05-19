@@ -35,7 +35,7 @@ router.post("/", requireFull, async (req, res) => {
 });
 
 router.delete("/:id", requireManager, async (req, res) => {
-  .where(eq(questionSetsTable.id, id));
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Geçersiz ID." });
     return;
