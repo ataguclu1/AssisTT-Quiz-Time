@@ -1,5 +1,6 @@
-There was an error committing your changes: A file with the same name already exists. Please choose a different name and try again.
-Commit message
-Add railway.toml for build and deploy configuration
-Copilot commit message generated: Add railway.toml for build and deploy configuration
-Extended description
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --no-frozen-lockfile && pnpm run build"
+
+[deploy]
+startCommand = "pnpm --filter @workspace/api-server start"
