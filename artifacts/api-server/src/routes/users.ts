@@ -73,15 +73,13 @@ router.patch("/:sicil/password", requireAdmin, async (req, res) => {
   await db
     .update(authorizedUsersTable)
     .set({ passwordHash: hash })
-    .where(eq(authorizedUsersTable.sicil, sicil));
-
+    const existing = await db.select().from(authorizedUsersTable).where(eq(authorizedUsersTable.sicil, String(sicil)));
   res.json({ success: true });
 });
 
 router.delete("/:sicil", requireAdmin, async (req, res) => {
   const { sicil } = req.params;
   await db.delete(authorizedUsersTable).where(eq(authorizedUsersTable.sicil, sicil));
-  res.json({ success: true });
-});
+  .where(eq(authorizedUsersTable.sicil, String(sicil)));});
 
 export default router;
